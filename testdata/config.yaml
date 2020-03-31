@@ -1,0 +1,29 @@
+
+# MODE: (dev | cluster)
+mode: dev
+
+cluster:
+    port: 2000
+    discovery_host: 127.0.0.1
+    advertise_host: 127.0.0.1
+
+kv:
+    enable_encryption: true
+    persist_to_disk: false
+    persist_path: kv.db
+
+api:
+    enable: true
+    port: 2001
+    authentication: false
+    enable_metrics: true
+
+ui:
+    enable: true
+    port: 80
+    authentication: false
+
+ssl:
+    enable: false
+    ssl_certificate: my.crt
+    ssl_key: my.key
