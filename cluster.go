@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/perlin-network/noise"
 	"github.com/perlin-network/noise/kademlia"
+	"gopkg.in/logex.v1"
 )
 
 //Cluster type
@@ -16,24 +16,16 @@ type Cluster struct {
 	node    *noise.Node
 	network *kademlia.Protocol
 	epoch   uint64
-	events  chan ClusterEvent
+	events  chan Message
 	peers   []noise.ID
+	log     *logex.Logger
 }
 
-//ClusterEvent is an event
-type ClusterEvent struct {
-	Type string
-}
-
-//Marshal function
-func (ce *ClusterEvent) Marshal() []byte {
-	d, _ := json.Marshal(ce)
-	return d
-}
-
-func newCluster(config *Config) (*Cluster, error) {
+func newCluster(app *Bunker) (*Cluster, error) {
+	config := app.Config
 	c := &Cluster{
 		config: config,
+		log:    app.Logger,
 	}
 	node, err := noise.NewNode(
 		noise.WithNodeAddress(config.Cluster.AdvertiseHost),
@@ -48,8 +40,8 @@ func newCluster(config *Config) (*Cluster, error) {
 	if err := c.node.Listen(); err != nil {
 		return c, err
 	}
-	c.events = make(chan ClusterEvent, config.Perf.BufferSize)
-	//err = c.registerHandlers()
+	c.events = make(chan Message, config.Perf.BufferSize)
+	err = c.registerHandlers()
 	if err != nil {
 		return c, err
 	}
@@ -58,15 +50,16 @@ func newCluster(config *Config) (*Cluster, error) {
 
 func (c *Cluster) registerHandlers() error {
 	c.node.Handle(func(ctx noise.HandlerContext) error {
-		if !ctx.IsRequest() {
+		if ctx.IsRequest() {
 			return nil
 		}
-		var e ClusterEvent
-		err := json.Unmarshal(ctx.Data(), &e)
+		var msg Message
+		err := json.Unmarshal(ctx.Data(), &msg)
 		if err != nil {
 			return err
 		}
-		c.events <- e
+		c.log.Pretty(msg)
+		c.events <- msg
 		return nil
 	})
 	return nil
@@ -75,10 +68,35 @@ func (c *Cluster) registerHandlers() error {
 //Start starts the cluster
 func (c *Cluster) Start() {
 	for {
-		if _, err := c.node.Ping(context.TODO(), c.config.Cluster.DiscoveryHost); err != nil {
-			log.Println(err)
+		// Wait for connection to our discovery host
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if _, err := c.node.Ping(ctx, c.config.Cluster.DiscoveryHost); err == nil {
+			break
 		}
-		c.peers = c.network.Discover()
-		time.Sleep(1 * time.Second)
+		cancel()
 	}
+	for {
+		// once we get a peer connection we can get the rest of the peers
+		c.peers = c.network.Discover()
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// Emit sends a message to the cluster
+func (c *Cluster) Emit(msg Message) error {
+	b, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	for _, p := range c.peers {
+		go func(b []byte, p string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			err := c.node.Send(ctx, p, b)
+			if err != nil {
+				c.log.Error(err)
+			}
+		}(b, p.Address)
+	}
+	return nil
 }

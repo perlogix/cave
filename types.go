@@ -1,5 +1,7 @@
 package main
 
+import "gopkg.in/logex.v1"
+
 // Config type defines the file configuration data
 type Config struct {
 	Mode    string        `yaml:"mode"`
@@ -14,7 +16,7 @@ type Config struct {
 // Bunker struct wraps all the app functions
 type Bunker struct {
 	Config  *Config
-	Logger  *LoggerConfig
+	Logger  *logex.Logger
 	Cluster *Cluster
 }
 
@@ -61,4 +63,11 @@ type SSLConfig struct {
 //PerfConfig holds performance configs
 type PerfConfig struct {
 	BufferSize uint64 `yaml:"buffer_size"`
+}
+
+// Message type represents a message on the wire
+type Message struct {
+	ID     string `json:"id"`
+	Type   string `json:"type"`
+	Origin string `json:"origin"`
 }

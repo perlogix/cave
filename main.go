@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"time"
+
+	"gopkg.in/logex.v1"
 )
 
 // Featurelist
@@ -27,17 +28,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	log := logex.NewLogger(1)
 	app := &Bunker{
 		Config: CONFIG,
+		Logger: log,
 	}
-	cluster, err := newCluster(app.Config)
+	cluster, err := newCluster(app)
 	if err != nil {
 		panic(err)
 	}
 	app.Cluster = cluster
 	go app.Cluster.Start()
 	for {
-		fmt.Println(app.Cluster.peers)
 		time.Sleep(2 * time.Second)
+		app.Cluster.Emit(Message{
+			Type:   "greeting",
+			Origin: app.Cluster.node.ID().Address,
+		})
 	}
 }
