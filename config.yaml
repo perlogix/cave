@@ -1,11 +1,11 @@
 
-# MODE: (dev | cluster)
+# MODE: (dev | prod)
 mode: dev
 
 cluster:
-    port: 2000
-    discovery_host: 127.0.0.1
-    advertise_host: 127.0.0.1
+    bind_port: 2000
+    discovery_host: 127.0.0.1:2000
+    advertise_host: 127.0.0.1:2000
 
 kv:
     enable_encryption: true
@@ -27,3 +27,6 @@ ssl:
     enable: false
     ssl_certificate: my.crt
     ssl_key: my.key
+
+performance:
+    buffer_size: 4096
