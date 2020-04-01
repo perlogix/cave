@@ -12,13 +12,14 @@ import (
 
 //Cluster type
 type Cluster struct {
-	config  *Config
-	node    *noise.Node
-	network *kademlia.Protocol
-	epoch   uint64
-	events  chan Message
-	peers   []noise.ID
-	log     *logex.Logger
+	config        *Config
+	node          *noise.Node
+	network       *kademlia.Protocol
+	epoch         uint64
+	events        chan Message
+	peers         []noise.ID
+	log           *logex.Logger
+	locationTable []node
 }
 
 func newCluster(app *Bunker) (*Cluster, error) {
@@ -78,6 +79,27 @@ func (c *Cluster) Start() {
 	for {
 		// once we get a peer connection we can get the rest of the peers
 		c.peers = c.network.Discover()
+		if time.Now().Unix()%60 == 0 {
+			c.locationTable = []node{}
+			for _, p := range c.peers {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				start := time.Now()
+				_, err := c.node.Ping(ctx, p.Address)
+				if err != nil {
+					cancel()
+					continue
+				}
+				diff := time.Now().Sub(start)
+				c.locationTable = append(c.locationTable, node{
+					id:       p.ID.String(),
+					address:  p.Address,
+					distance: diff,
+				})
+				cancel()
+			}
+			c.log.Debugf("Updated location table. %+v", c.locationTable)
+			time.Sleep(1 * time.Second)
+		}
 		time.Sleep(100 * time.Millisecond)
 	}
 }

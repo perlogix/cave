@@ -1,6 +1,10 @@
 package main
 
-import "gopkg.in/logex.v1"
+import (
+	"time"
+
+	"gopkg.in/logex.v1"
+)
 
 // Config type defines the file configuration data
 type Config struct {
@@ -70,4 +74,10 @@ type Message struct {
 	ID     string `json:"id"`
 	Type   string `json:"type"`
 	Origin string `json:"origin"`
+}
+
+type node struct {
+	id       string
+	address  string
+	distance time.Duration
 }

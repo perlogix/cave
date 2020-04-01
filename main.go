@@ -28,7 +28,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log := logex.NewLogger(1)
+	log := logex.NewLogger(0)
+	log.Debug("test")
 	app := &Bunker{
 		Config: CONFIG,
 		Logger: log,
