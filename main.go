@@ -23,28 +23,42 @@ var VERSION = "v0.0.0-devel"
 // CONFIG is a global
 var CONFIG *Config
 
+// TERMINATOR holds signal channels for goroutines
+var TERMINATOR []chan bool
+
 func main() {
 	CONFIG, err := getConfig()
 	if err != nil {
 		panic(err)
 	}
 	log := logex.NewLogger(0)
-	log.Debug("test")
 	app := &Bunker{
 		Config: CONFIG,
 		Logger: log,
 	}
 	cluster, err := newCluster(app)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
+	TERMINATOR = append(TERMINATOR, cluster.terminate)
 	app.Cluster = cluster
-	go app.Cluster.Start()
-	for {
-		time.Sleep(2 * time.Second)
-		app.Cluster.Emit(Message{
-			Type:   "greeting",
-			Origin: app.Cluster.node.ID().Address,
-		})
+	app.events = make(chan Message, CONFIG.Perf.BufferSize)
+	app.sync = make(chan Message, CONFIG.Perf.BufferSize)
+	app.updates = make(chan Message, CONFIG.Perf.BufferSize)
+	err = app.Cluster.registerHandlers(app.events, app.updates, app.sync)
+	if err != nil {
+		log.Panic(err)
 	}
+	kv, err := newKV(app)
+	if err != nil {
+		log.Panic(err)
+	}
+	app.KV = kv
+	TERMINATOR = append(TERMINATOR, kv.terminate)
+
+	// START SHIT
+	go app.Cluster.Start()
+	go app.KV.Start()
+
+	time.Sleep(10 * time.Second)
 }

@@ -22,6 +22,10 @@ type Bunker struct {
 	Config  *Config
 	Logger  *logex.Logger
 	Cluster *Cluster
+	KV      *KV
+	events  chan Message
+	updates chan Message
+	sync    chan Message
 }
 
 //ClusterConfig type holds the cluster interface objects.
@@ -33,9 +37,8 @@ type ClusterConfig struct {
 
 //KVConfig type holds the key-value engine objects.
 type KVConfig struct {
-	Encryption  bool   `yaml:"enable_encryption"`
-	Persist     bool   `yaml:"persist_to_disk"`
-	PersistPath string `yaml:"persist_path"`
+	Encryption bool   `yaml:"enable_encryption"`
+	DBPath     string `yaml:"db_path"`
 }
 
 //APIConfig type holds the API engine objects
@@ -71,9 +74,12 @@ type PerfConfig struct {
 
 // Message type represents a message on the wire
 type Message struct {
-	ID     string `json:"id"`
-	Type   string `json:"type"`
-	Origin string `json:"origin"`
+	Epoch    uint64 `json:"epoch"`
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Origin   string `json:"origin"`
+	Data     []byte `json:"data"`
+	DataType string `json:"data_type"`
 }
 
 type node struct {

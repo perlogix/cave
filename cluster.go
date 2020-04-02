@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/perlin-network/noise"
 	"github.com/perlin-network/noise/kademlia"
 	"gopkg.in/logex.v1"
@@ -12,11 +13,14 @@ import (
 
 //Cluster type
 type Cluster struct {
+	terminate     chan bool
 	config        *Config
 	node          *noise.Node
 	network       *kademlia.Protocol
 	epoch         uint64
 	events        chan Message
+	updates       chan Message
+	sync          chan Message
 	peers         []noise.ID
 	log           *logex.Logger
 	locationTable []node
@@ -41,15 +45,11 @@ func newCluster(app *Bunker) (*Cluster, error) {
 	if err := c.node.Listen(); err != nil {
 		return c, err
 	}
-	c.events = make(chan Message, config.Perf.BufferSize)
-	err = c.registerHandlers()
-	if err != nil {
-		return c, err
-	}
+	c.terminate = make(chan bool)
 	return c, nil
 }
 
-func (c *Cluster) registerHandlers() error {
+func (c *Cluster) registerHandlers(events chan Message, updates chan Message, sync chan Message) error {
 	c.node.Handle(func(ctx noise.HandlerContext) error {
 		if ctx.IsRequest() {
 			return nil
@@ -59,8 +59,16 @@ func (c *Cluster) registerHandlers() error {
 		if err != nil {
 			return err
 		}
-		c.log.Pretty(msg)
-		c.events <- msg
+		switch msg.Type {
+		case "event":
+			c.events <- msg
+		case "update":
+			c.updates <- msg
+		case "sync":
+			c.sync <- msg
+		default:
+			c.log.Errorf("No channel for message type %s", msg.Type)
+		}
 		return nil
 	})
 	return nil
@@ -72,12 +80,17 @@ func (c *Cluster) Start() {
 		// Wait for connection to our discovery host
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		if _, err := c.node.Ping(ctx, c.config.Cluster.DiscoveryHost); err == nil {
+			cancel()
 			break
 		}
 		cancel()
 	}
 	for {
 		// once we get a peer connection we can get the rest of the peers
+		switch {
+		case <-c.terminate:
+			return
+		}
 		c.peers = c.network.Discover()
 		if time.Now().Unix()%60 == 0 {
 			c.locationTable = []node{}
@@ -105,7 +118,20 @@ func (c *Cluster) Start() {
 }
 
 // Emit sends a message to the cluster
-func (c *Cluster) Emit(msg Message) error {
+func (c *Cluster) Emit(typ string, data []byte, dtype string) error {
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	msg := &Message{
+		Epoch:    c.epoch + 1,
+		Data:     data,
+		DataType: dtype,
+		Type:     typ,
+		ID:       id.String(),
+		Origin:   c.node.Addr(),
+	}
+	msg.Epoch = c.epoch + 1
 	b, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -120,5 +146,6 @@ func (c *Cluster) Emit(msg Message) error {
 			}
 		}(b, p.Address)
 	}
+	c.epoch++
 	return nil
 }

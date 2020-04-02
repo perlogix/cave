@@ -18,9 +18,8 @@ func getConfig() (*Config, error) {
 			AdvertiseHost: "127.0.0.1:2000",
 		},
 		KV: KVConfig{
-			Encryption:  true,
-			Persist:     true,
-			PersistPath: "kv.db",
+			Encryption: true,
+			DBPath:     "kv.db",
 		},
 		API: APIConfig{
 			Enable:         true,
@@ -81,8 +80,7 @@ func bindFlags() (*pflag.FlagSet, error) {
 	fs.String("cluster.discoveryhost", "127.0.0.1:2000", "Host/IP to announce its presnece to")
 	fs.String("cluster.advertisehost", "127.0.0.1:2000", "Host/IP to advertise when connecting to the cluster")
 	fs.Bool("kv.encryption", true, "Enable encrypted values in the key-value store")
-	fs.Bool("kv.diskpersistance", true, "Enable background disk persistance for the key-value store")
-	fs.String("kv.persistpath", "kv.db", "Path to save the key-value store if disk persistance is enable")
+	fs.String("kv.dbpath", "kv.db", "Path to save the key-value store if disk persistance is enable")
 	fs.Bool("api.enable", true, "Enable the REST API")
 	fs.Uint16("api.port", 2001, "Port for the REST API to listen on")
 	fs.Bool("api.authentication", true, "Enable authentication on the REST API")

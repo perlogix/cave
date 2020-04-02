@@ -3,10 +3,12 @@ module gitlab.com/yeticloud/bunker
 go 1.13
 
 require (
+	github.com/google/uuid v1.1.1
 	github.com/hashicorp/consul/api v1.4.0 // indirect
 	github.com/perlin-network/noise v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.2
+	go.etcd.io/bbolt v1.3.2
 	go.uber.org/zap v1.14.1 // indirect
 	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
