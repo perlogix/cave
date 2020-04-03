@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/perlin-network/noise"
 	"github.com/perlin-network/noise/kademlia"
-	"gopkg.in/logex.v1"
 )
 
 //Cluster type
@@ -22,7 +22,7 @@ type Cluster struct {
 	updates       chan Message
 	sync          chan Message
 	peers         []noise.ID
-	log           *logex.Logger
+	log           *Log
 	locationTable []node
 }
 
@@ -45,7 +45,7 @@ func newCluster(app *Bunker) (*Cluster, error) {
 	if err := c.node.Listen(); err != nil {
 		return c, err
 	}
-	c.terminate = make(chan bool)
+	c.terminate = make(chan bool, 1)
 	return c, nil
 }
 
@@ -67,7 +67,7 @@ func (c *Cluster) registerHandlers(events chan Message, updates chan Message, sy
 		case "sync":
 			c.sync <- msg
 		default:
-			c.log.Errorf("No channel for message type %s", msg.Type)
+			c.log.ErrorF("No channel for message type %s", msg.Type)
 		}
 		return nil
 	})
@@ -76,44 +76,56 @@ func (c *Cluster) registerHandlers(events chan Message, updates chan Message, sy
 
 //Start starts the cluster
 func (c *Cluster) Start() {
+	c.log.Debug("Start clustering")
 	for {
+		c.log.Debug("waiting for peers")
 		// Wait for connection to our discovery host
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		if _, err := c.node.Ping(ctx, c.config.Cluster.DiscoveryHost); err == nil {
 			cancel()
 			break
 		}
 		cancel()
+		time.Sleep(1 * time.Second)
 	}
+	c.log.Debug("Found at least 1 peer")
+	index := 0
 	for {
 		// once we get a peer connection we can get the rest of the peers
-		switch {
+		select {
 		case <-c.terminate:
+			c.log.Info("Got termination signal")
 			return
-		}
-		c.peers = c.network.Discover()
-		if time.Now().Unix()%60 == 0 {
-			c.locationTable = []node{}
-			for _, p := range c.peers {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				start := time.Now()
-				_, err := c.node.Ping(ctx, p.Address)
-				if err != nil {
+		default:
+			c.log.Debug("Discovering network")
+			c.peers = c.network.Discover()
+			if index == 60 || index == 0 { // every 30 seconds or so
+				ltab := []node{}
+				for _, p := range c.peers {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					start := time.Now()
+					_, err := c.node.Ping(ctx, p.Address)
+					if err != nil {
+						cancel()
+						continue
+					}
+					diff := time.Now().Sub(start)
+					ltab = append(ltab, node{
+						ID:       p.ID.String(),
+						Address:  p.Address,
+						Distance: diff,
+					})
 					cancel()
-					continue
 				}
-				diff := time.Now().Sub(start)
-				c.locationTable = append(c.locationTable, node{
-					id:       p.ID.String(),
-					address:  p.Address,
-					distance: diff,
-				})
-				cancel()
+				c.locationTable = ltab
+				c.log.DebugF("Updated location table")
+				c.log.Pretty(c.locationTable)
+				index = 0
 			}
-			c.log.Debugf("Updated location table. %+v", c.locationTable)
-			time.Sleep(1 * time.Second)
+			c.log.Pretty(c.peers)
+			time.Sleep(500 * time.Millisecond)
+			index++
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -142,7 +154,7 @@ func (c *Cluster) Emit(typ string, data []byte, dtype string) error {
 			defer cancel()
 			err := c.node.Send(ctx, p, b)
 			if err != nil {
-				c.log.Error(err)
+				fmt.Println(err)
 			}
 		}(b, p.Address)
 	}

@@ -2,8 +2,6 @@ package main
 
 import (
 	"time"
-
-	"gopkg.in/logex.v1"
 )
 
 // Featurelist
@@ -31,14 +29,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log := logex.NewLogger(0)
+	log := Log{}.New()
 	app := &Bunker{
 		Config: CONFIG,
 		Logger: log,
 	}
 	cluster, err := newCluster(app)
 	if err != nil {
-		log.Panic(err)
+		panic(err)
 	}
 	TERMINATOR = append(TERMINATOR, cluster.terminate)
 	app.Cluster = cluster
@@ -47,11 +45,11 @@ func main() {
 	app.updates = make(chan Message, CONFIG.Perf.BufferSize)
 	err = app.Cluster.registerHandlers(app.events, app.updates, app.sync)
 	if err != nil {
-		log.Panic(err)
+		panic(err)
 	}
 	kv, err := newKV(app)
 	if err != nil {
-		log.Panic(err)
+		panic(err)
 	}
 	app.KV = kv
 	TERMINATOR = append(TERMINATOR, kv.terminate)
@@ -59,6 +57,5 @@ func main() {
 	// START SHIT
 	go app.Cluster.Start()
 	go app.KV.Start()
-
-	time.Sleep(10 * time.Second)
+	time.Sleep(60 * time.Minute)
 }

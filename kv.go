@@ -1,12 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"go.etcd.io/bbolt"
-	"gopkg.in/logex.v1"
 )
 
 // KV type
@@ -18,12 +18,16 @@ type KV struct {
 	sync      chan Message
 	db        *bbolt.DB
 	dbPath    string
-	log       *logex.Logger
+	log       *Log
+}
+
+// KVUpdate type
+type KVUpdate struct {
 }
 
 func newKV(app *Bunker) (*KV, error) {
 	kv := &KV{
-		terminate: make(chan bool),
+		terminate: make(chan bool, 1),
 		config:    app.Config,
 		events:    app.events,
 		updates:   app.updates,
@@ -63,34 +67,34 @@ func (kv *KV) Start() {
 		case msg := <-kv.updates:
 			err := kv.handleUpdate(msg)
 			if err != nil {
-				kv.log.Error(err)
+				fmt.Println(err)
 			}
 
 		case msg := <-kv.events:
 			err := kv.handleEvent(msg)
 			if err != nil {
-				kv.log.Error(err)
+				fmt.Println(err)
 			}
 		case msg := <-kv.sync:
 			err := kv.handleSync(msg)
 			if err != nil {
-				kv.log.Error(err)
+				fmt.Println(err)
 			}
 		}
 	}
 }
 
 func (kv *KV) handleUpdate(msg Message) error {
-	kv.log.Pretty(msg)
+	fmt.Println(msg)
 	return nil
 }
 
 func (kv *KV) handleSync(msg Message) error {
-	kv.log.Pretty(msg)
+	fmt.Println(msg)
 	return nil
 }
 
 func (kv *KV) handleEvent(msg Message) error {
-	kv.log.Pretty(msg)
+	fmt.Println(msg)
 	return nil
 }

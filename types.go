@@ -2,8 +2,6 @@ package main
 
 import (
 	"time"
-
-	"gopkg.in/logex.v1"
 )
 
 // Config type defines the file configuration data
@@ -20,7 +18,7 @@ type Config struct {
 // Bunker struct wraps all the app functions
 type Bunker struct {
 	Config  *Config
-	Logger  *logex.Logger
+	Logger  *Log
 	Cluster *Cluster
 	KV      *KV
 	events  chan Message
@@ -83,7 +81,7 @@ type Message struct {
 }
 
 type node struct {
-	id       string
-	address  string
-	distance time.Duration
+	ID       string
+	Address  string
+	Distance time.Duration
 }
