@@ -15,7 +15,7 @@ import (
 
 const (
 	// APIPREFIX path
-	APIPREFIX = "/api/v1/"
+	APIPREFIX = "/api/v1/kv/"
 
 	// UIPREFIX path
 	UIPREFIX = "/ui"
@@ -24,12 +24,8 @@ const (
 	SYSPREFIX = "/system"
 )
 
-type jsonResponse struct {
-	Status  int         `json:",omitempty"`
-	Message string      `json:",omitempty"`
-	Bytes   int         `json:",omitempty"`
-	Error   string      `json:",omitempty"`
-	Data    interface{} `json:",omitempty"`
+type jsonError struct {
+	Message string `json:"message,omitempty"`
 }
 
 // API Type
@@ -55,7 +51,7 @@ func NewAPI(app *Bunker) (*API, error) {
 	a.http.HideBanner = true
 	//a.http.Use(middleware.Recover())
 	a.http.Use(a.log.EchoLogger())
-	a.http.Any(APIPREFIX+"kv/*", a.kvHandler)
+	a.http.Any(APIPREFIX+"*", a.kvHandler)
 	a.http.Static(UIPREFIX, "./ui/")
 	a.http.Debug = true
 	return a, nil
@@ -94,38 +90,49 @@ func (a *API) kvHandler(c echo.Context) error {
 	case "DELETE":
 		return a.kvPutHandler(c)
 	default:
-		return c.JSON(405, jsonResponse{
-			Status: 405,
-			Error:  "Method " + c.Request().Method + "not allowed.",
-		})
+		return c.JSON(405, jsonError{Message: "Method " + c.Request().Method + " is not allowed"})
 	}
 }
 
 func (a *API) kvGetHandler(c echo.Context) error {
 	path := trimPath(c.Request().URL.Path, APIPREFIX)
-	if strings.HasSuffix(path, "/") {
+	if strings.HasSuffix(path, "/") || path == "" {
 		k, err := a.kv.GetKeys(path)
 		if err != nil {
 			a.log.Error(err)
-			return c.JSON(500, jsonResponse{Error: err.Error(), Status: 500})
+			return c.JSON(500, jsonError{Message: err.Error()})
 		}
 		if len(k) == 0 {
-			return c.JSON(404, jsonResponse{
-				Error:  "Key " + path + " does not exist",
-				Status: 404,
+			return c.JSON(404, jsonError{
+				Message: "Key " + path + " does not exist",
 			})
 		}
-		return c.JSON(200, jsonResponse{Data: k, Status: 200})
+		return c.JSON(200, k)
 	}
 	b, err := a.kv.Get(path)
 	if err != nil {
 		a.log.Error(err)
-		return c.JSON(500, jsonResponse{Error: err.Error(), Status: 500})
+		return c.JSON(500, jsonError{Message: err.Error()})
 	}
-	if len(b) == 0 {
-		return c.JSON(404, jsonResponse{Error: "Key " + path + " does not exist", Status: 404})
+	if len(b.Data) == 0 {
+		return c.JSON(404, jsonError{Message: "Key " + path + " does not exist"})
 	}
-	return c.Blob(200, "application/json", b)
+	var ct string
+	switch b.DataType {
+	case "json":
+		ct = "application/json"
+	case "hcl":
+		ct = "application/hcl"
+	case "yaml":
+		ct = "application/yaml"
+	case "markdown":
+		ct = "application/markdown"
+	case "text":
+		ct = "text/plain"
+	default:
+		ct = "application/json"
+	}
+	return c.Blob(200, ct, b.Data)
 }
 
 func (a *API) kvPutHandler(c echo.Context) error {
@@ -133,14 +140,14 @@ func (a *API) kvPutHandler(c echo.Context) error {
 	buf, err := ioutil.ReadAll(c.Request().Body)
 	if err != nil {
 		a.log.Error(err)
-		return c.JSON(400, jsonResponse{Error: err.Error(), Status: 400})
+		return c.JSON(400, jsonError{Message: err.Error()})
 	}
-	err = a.kv.Put(path, buf)
+	err = a.kv.Put(path, buf, "json")
 	if err != nil {
 		a.log.Error(err)
-		return c.JSON(500, jsonResponse{Error: err.Error(), Status: 500})
+		return c.JSON(500, jsonError{Message: err.Error()})
 	}
-	return c.JSON(200, jsonResponse{Status: 200, Message: "OK", Bytes: len(buf)})
+	return c.JSON(200, jsonError{Message: "ok"})
 }
 
 func (a *API) kvDeleteHandler(c echo.Context) error {
@@ -149,16 +156,16 @@ func (a *API) kvDeleteHandler(c echo.Context) error {
 		err := a.kv.DeleteBucket(path)
 		if err != nil {
 			if err == bbolt.ErrBucketNotFound {
-				return c.JSON(404, jsonResponse{Error: err.Error(), Status: 404})
+				return c.JSON(404, jsonError{Message: err.Error()})
 			}
-			return c.JSON(500, jsonResponse{Error: err.Error(), Status: 500})
+			return c.JSON(500, jsonError{Message: err.Error()})
 		}
 	}
 	err := a.kv.DeleteKey(path)
 	if err != nil {
-		return c.JSON(500, jsonResponse{Status: 500, Error: err.Error()})
+		return c.JSON(500, jsonError{Message: err.Error()})
 	}
-	return c.JSON(200, jsonResponse{Status: 200, Message: "OK"})
+	return c.JSON(200, jsonError{Message: "ok"})
 }
 
 func trimPath(path string, prefix string) string {

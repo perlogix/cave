@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 // Featurelist
@@ -47,12 +48,18 @@ func main() {
 	}
 	TERMINATOR["cluster"] = cluster.terminate
 	app.Cluster = cluster
-	app.events = make(chan Message, CONFIG.Perf.BufferSize)
-	app.sync = make(chan Message, CONFIG.Perf.BufferSize)
-	app.updates = make(chan Message, CONFIG.Perf.BufferSize)
-	err = app.Cluster.registerHandlers(app.events, app.updates, app.sync)
+	app.events = make(chan Message, 4096)
+	app.sync = make(chan Message, 4096)
+	err = app.Cluster.registerHandlers(app.events, app.sync)
 	if err != nil {
 		panic(err)
+	}
+	go app.Cluster.Start()
+	for {
+		if app.Cluster.synced {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 	kv, err := newKV(app)
 	if err != nil {
@@ -67,7 +74,7 @@ func main() {
 	app.API = api
 	TERMINATOR["api"] = api.terminate
 	// START SHIT
-	go app.Cluster.Start()
+
 	go app.KV.Start()
 	go app.API.Start()
 	<-kill
