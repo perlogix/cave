@@ -48,7 +48,7 @@ func main() {
 	}
 	TERMINATOR["cluster"] = cluster.terminate
 	app.Cluster = cluster
-	app.events = make(chan Message, 4096)
+	app.updates = make(chan Message, 4096)
 	app.sync = make(chan Message, 4096)
 	err = app.Cluster.registerHandlers(app.events, app.sync)
 	if err != nil {

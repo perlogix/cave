@@ -56,7 +56,7 @@ func newCluster(app *Bunker) (*Cluster, error) {
 	return c, nil
 }
 
-func (c *Cluster) registerHandlers(events chan Message, sync chan Message) error {
+func (c *Cluster) registerHandlers(updates chan Message, sync chan Message) error {
 	c.node.Handle(func(ctx noise.HandlerContext) error {
 		if ctx.IsRequest() {
 			return nil
@@ -68,8 +68,8 @@ func (c *Cluster) registerHandlers(events chan Message, sync chan Message) error
 		}
 		c.log.Pretty(msg)
 		switch msg.Type {
-		case "event":
-			events <- msg
+		case "update":
+			updates <- msg
 		case "sync":
 			if msg.DataType == "sync:request" {
 				go func() {
