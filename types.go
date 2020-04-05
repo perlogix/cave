@@ -21,6 +21,7 @@ type Bunker struct {
 	Logger  *Log
 	Cluster *Cluster
 	KV      *KV
+	API     *API
 	events  chan Message
 	updates chan Message
 	sync    chan Message

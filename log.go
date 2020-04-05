@@ -4,20 +4,45 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
+
+	"github.com/labstack/echo"
 )
 
 // Log type
 type Log struct {
 	FormatString string
+	c            chan string
+	terminator   chan bool
 }
 
 // New logger
-func (l Log) New() *Log {
+func (l Log) New(config *Config) *Log {
 	log := &Log{
-		FormatString: "%s [ %5s ] %v\n",
+		FormatString: "%s [ %-5s ] %v\n",
+		c:            make(chan string, config.Perf.BufferSize),
+		terminator:   make(chan bool),
 	}
 	return log
+}
+
+//Start function
+func (l *Log) Start() {
+	for {
+		select {
+		case <-l.terminator:
+			// Finish writing logs before quitting
+			for m := range l.c {
+				fmt.Printf(m)
+			}
+			return
+		case m := <-l.c:
+			fmt.Printf(m)
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 }
 
 func timestamp() string {
@@ -25,7 +50,7 @@ func timestamp() string {
 }
 
 func (l *Log) print(lvl string, msg string) {
-	fmt.Printf(l.FormatString, timestamp(), lvl, msg)
+	l.c <- fmt.Sprintf(l.FormatString, timestamp(), lvl, msg)
 }
 
 // Debug method
@@ -102,4 +127,24 @@ func (l *Log) Pretty(v ...interface{}) {
 			l.print("PRETTY", "\n"+string(j[:]))
 		}
 	}
+}
+
+// Middleware is an echo logger middleware
+func (l *Log) middleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		c.Response().After(func() {
+			l.print(strings.ToUpper(c.Scheme()), fmt.Sprintf(
+				"%3v %-7s %s",
+				c.Response().Status,
+				c.Request().Method,
+				c.Request().RequestURI,
+			))
+		})
+		return next(c)
+	}
+}
+
+//EchoLogger logger
+func (l *Log) EchoLogger() echo.MiddlewareFunc {
+	return l.middleware
 }

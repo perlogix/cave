@@ -4,12 +4,17 @@ import (
 	"net"
 	"os"
 
+	"github.com/denisbrodbeck/machineid"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 // getConfig loads config from its various sources
 func getConfig() (*Config, error) {
+	id, err := machineid.ID()
+	if err != nil {
+		return &Config{}, err
+	}
 	c := &Config{
 		Mode: "dev",
 		Cluster: ClusterConfig{
@@ -48,7 +53,7 @@ func getConfig() (*Config, error) {
 	v.AddConfigPath("/etc/yeticloud/bunker")
 	v.SetEnvPrefix("BUNKER")
 	v.AutomaticEnv()
-	flags, err := bindFlags()
+	flags, err := bindFlags(id)
 	if err != nil {
 		return c, err
 	}
@@ -71,7 +76,7 @@ func getConfig() (*Config, error) {
 	return c, nil
 }
 
-func bindFlags() (*pflag.FlagSet, error) {
+func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs := pflag.NewFlagSet("Bunker", pflag.ExitOnError)
 	fs.SortFlags = true
 	fs.BoolP("help", "h", false, "Prints out this usage/help info")

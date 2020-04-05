@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,12 +28,19 @@ type Cluster struct {
 func newCluster(app *Bunker) (*Cluster, error) {
 	config := app.Config
 	c := &Cluster{
-		config: config,
-		log:    app.Logger,
+		config:    config,
+		log:       app.Logger,
+		terminate: make(chan bool),
+	}
+	if c.config.Mode == "dev" {
+		return c, nil
 	}
 	node, err := noise.NewNode(
 		noise.WithNodeAddress(config.Cluster.AdvertiseHost),
 		noise.WithNodeBindPort(config.Cluster.BindPort),
+		noise.WithNodeIdleTimeout(300*time.Second),
+		noise.WithNodeMaxInboundConnections(4096),
+		noise.WithNodeMaxOutboundConnections(4096),
 	)
 	if err != nil {
 		return c, err
@@ -42,10 +48,6 @@ func newCluster(app *Bunker) (*Cluster, error) {
 	c.node = node
 	c.network = kademlia.New()
 	c.node.Bind(c.network.Protocol())
-	if err := c.node.Listen(); err != nil {
-		return c, err
-	}
-	c.terminate = make(chan bool, 1)
 	return c, nil
 }
 
@@ -54,21 +56,26 @@ func (c *Cluster) registerHandlers(events chan Message, updates chan Message, sy
 		if ctx.IsRequest() {
 			return nil
 		}
-		var msg Message
-		err := json.Unmarshal(ctx.Data(), &msg)
-		if err != nil {
-			return err
-		}
-		switch msg.Type {
-		case "event":
-			c.events <- msg
-		case "update":
-			c.updates <- msg
-		case "sync":
-			c.sync <- msg
-		default:
-			c.log.ErrorF("No channel for message type %s", msg.Type)
-		}
+		go func() {
+			var msg Message
+			err := json.Unmarshal(ctx.Data(), &msg)
+			if err != nil {
+				return
+			}
+			c.log.Pretty(msg)
+			switch msg.Type {
+			case "event":
+				c.events <- msg
+			case "update":
+				c.updates <- msg
+			case "sync":
+				c.sync <- msg
+			default:
+				c.log.ErrorF("No channel for message type %s", msg.Type)
+
+			}
+			c.log.Debug("UPDATES:", len(c.updates))
+		}()
 		return nil
 	})
 	return nil
@@ -76,17 +83,29 @@ func (c *Cluster) registerHandlers(events chan Message, updates chan Message, sy
 
 //Start starts the cluster
 func (c *Cluster) Start() {
+	if err := c.node.Listen(); err != nil {
+		c.log.Fatal(err)
+	}
+	if c.config.Mode == "dev" {
+		return
+	}
 	c.log.Debug("Start clustering")
 	for {
 		c.log.Debug("waiting for peers")
-		// Wait for connection to our discovery host
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		if _, err := c.node.Ping(ctx, c.config.Cluster.DiscoveryHost); err == nil {
+		select {
+		case <-c.terminate:
+			return
+		default:
+			// Wait for connection to our discovery host
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			if _, err := c.node.Ping(ctx, c.config.Cluster.DiscoveryHost); err == nil {
+				cancel()
+				break
+			}
 			cancel()
-			break
+			time.Sleep(1 * time.Second)
 		}
-		cancel()
-		time.Sleep(1 * time.Second)
+		break
 	}
 	c.log.Debug("Found at least 1 peer")
 	index := 0
@@ -97,15 +116,16 @@ func (c *Cluster) Start() {
 			c.log.Info("Got termination signal")
 			return
 		default:
-			c.log.Debug("Discovering network")
+			//c.log.Debug("Discovering network")
 			c.peers = c.network.Discover()
 			if index == 60 || index == 0 { // every 30 seconds or so
 				ltab := []node{}
 				for _, p := range c.peers {
-					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 					start := time.Now()
 					_, err := c.node.Ping(ctx, p.Address)
 					if err != nil {
+						c.log.Error(err)
 						cancel()
 						continue
 					}
@@ -118,11 +138,8 @@ func (c *Cluster) Start() {
 					cancel()
 				}
 				c.locationTable = ltab
-				c.log.DebugF("Updated location table")
-				c.log.Pretty(c.locationTable)
 				index = 0
 			}
-			c.log.Pretty(c.peers)
 			time.Sleep(500 * time.Millisecond)
 			index++
 		}
@@ -131,6 +148,9 @@ func (c *Cluster) Start() {
 
 // Emit sends a message to the cluster
 func (c *Cluster) Emit(typ string, data []byte, dtype string) error {
+	if c.config.Mode == "dev" {
+		return nil
+	}
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -154,7 +174,7 @@ func (c *Cluster) Emit(typ string, data []byte, dtype string) error {
 			defer cancel()
 			err := c.node.Send(ctx, p, b)
 			if err != nil {
-				fmt.Println(err)
+				c.log.Error(err)
 			}
 		}(b, p.Address)
 	}

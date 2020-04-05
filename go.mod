@@ -3,8 +3,11 @@ module gitlab.com/yeticloud/bunker
 go 1.13
 
 require (
+	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/consul/api v1.4.0 // indirect
+	github.com/labstack/echo v3.3.10+incompatible
+	github.com/labstack/echo/v4 v4.1.16 // indirect
 	github.com/perlin-network/noise v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.2

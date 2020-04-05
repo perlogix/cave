@@ -1,7 +1,9 @@
 package main
 
 import (
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 // Featurelist
@@ -22,14 +24,19 @@ var VERSION = "v0.0.0-devel"
 var CONFIG *Config
 
 // TERMINATOR holds signal channels for goroutines
-var TERMINATOR []chan bool
+var TERMINATOR map[string]chan bool
 
 func main() {
+	TERMINATOR = map[string]chan bool{}
+	kill := make(chan os.Signal)
+	signal.Notify(kill, syscall.SIGKILL, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
 	CONFIG, err := getConfig()
 	if err != nil {
 		panic(err)
 	}
-	log := Log{}.New()
+	log := Log{}.New(CONFIG)
+	TERMINATOR["log"] = log.terminator
+	go log.Start()
 	app := &Bunker{
 		Config: CONFIG,
 		Logger: log,
@@ -38,7 +45,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	TERMINATOR = append(TERMINATOR, cluster.terminate)
+	TERMINATOR["cluster"] = cluster.terminate
 	app.Cluster = cluster
 	app.events = make(chan Message, CONFIG.Perf.BufferSize)
 	app.sync = make(chan Message, CONFIG.Perf.BufferSize)
@@ -52,10 +59,22 @@ func main() {
 		panic(err)
 	}
 	app.KV = kv
-	TERMINATOR = append(TERMINATOR, kv.terminate)
-
+	TERMINATOR["kv"] = kv.terminate
+	api, err := NewAPI(app)
+	if err != nil {
+		panic(err)
+	}
+	app.API = api
+	TERMINATOR["api"] = api.terminate
 	// START SHIT
 	go app.Cluster.Start()
 	go app.KV.Start()
-	time.Sleep(60 * time.Minute)
+	go app.API.Start()
+	<-kill
+	log.Warn("Got kill signal from OS, shutting down...")
+	for _, t := range []string{"api", "kv", "cluster", "log"} {
+		log.Warn("Shutting down " + t)
+		TERMINATOR[t] <- true
+	}
+
 }

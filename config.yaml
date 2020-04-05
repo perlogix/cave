@@ -1,6 +1,6 @@
 
 # MODE: (dev | prod)
-mode: dev
+mode: prod
 
 cluster:
     bind_port: 2000
@@ -14,7 +14,7 @@ kv:
 
 api:
     enable: true
-    port: 2001
+    port: 9000
     authentication: false
     enable_metrics: true
 
