@@ -14,13 +14,9 @@ while iterations <= 10:
     with open('data.json', 'r') as f:
         data = json.loads(f.readline())
         while data:
-            key = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(8)])
-            buckets = []
-            for n in range(random.randint(1,10)):
-                buckets.append(''.join([random.choice(string.ascii_letters + string.digits) for n in range(32)]))
-            path = '/'.join(buckets)
+            key = str(data["id"])
             try:
-                requests.post(url=URL+path+'/'+key, json=data)
+                requests.post(url=URL+str(iterations)+"/"+key, json=data)
             except Exception as e:
                 print(e)
             data = f.readline()

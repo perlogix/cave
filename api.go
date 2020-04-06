@@ -94,8 +94,19 @@ func (a *API) kvHandler(c echo.Context) error {
 	}
 }
 
+func (a *API) treeHandler(c echo.Context, path string) error {
+	tree, err := a.kv.GetTree(strings.TrimSuffix(path, "_tree"))
+	if err != nil {
+		return c.JSON(500, jsonError{Message: err.Error()})
+	}
+	return c.JSON(200, tree)
+}
+
 func (a *API) kvGetHandler(c echo.Context) error {
 	path := trimPath(c.Request().URL.Path, APIPREFIX)
+	if strings.HasSuffix(path, "_tree") {
+		return a.treeHandler(c, path)
+	}
 	if strings.HasSuffix(path, "/") || path == "" {
 		k, err := a.kv.GetKeys(path)
 		if err != nil {
@@ -114,25 +125,12 @@ func (a *API) kvGetHandler(c echo.Context) error {
 		a.log.Error(err)
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}
-	if len(b.Data) == 0 {
+
+	if len(b) == 0 {
 		return c.JSON(404, jsonError{Message: "Key " + path + " does not exist"})
 	}
-	var ct string
-	switch b.DataType {
-	case "json":
-		ct = "application/json"
-	case "hcl":
-		ct = "application/hcl"
-	case "yaml":
-		ct = "application/yaml"
-	case "markdown":
-		ct = "application/markdown"
-	case "text":
-		ct = "text/plain"
-	default:
-		ct = "application/json"
-	}
-	return c.Blob(200, ct, b.Data)
+	return c.Blob(200, "application/json", b)
+
 }
 
 func (a *API) kvPutHandler(c echo.Context) error {
@@ -142,7 +140,7 @@ func (a *API) kvPutHandler(c echo.Context) error {
 		a.log.Error(err)
 		return c.JSON(400, jsonError{Message: err.Error()})
 	}
-	err = a.kv.Put(path, buf, "json")
+	err = a.kv.Put(path, buf)
 	if err != nil {
 		a.log.Error(err)
 		return c.JSON(500, jsonError{Message: err.Error()})

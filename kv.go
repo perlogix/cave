@@ -26,16 +26,9 @@ type KV struct {
 
 // KVUpdate type
 type KVUpdate struct {
-	UpdateType string   `json:"update_type"`
-	Key        string   `json:"key"`
-	Value      KVObject `json:"value"`
-}
-
-//KVObject type defines the data type thats actually saved to the kv store
-type KVObject struct {
-	Data       []byte    `json:"data"`
-	DataType   string    `json:"data_type"`
-	LastChange time.Time `json:"last_change"`
+	UpdateType string `json:"update_type"`
+	Key        string `json:"key"`
+	Value      []byte `json:"value"`
 }
 
 //KVStats struct
@@ -123,7 +116,7 @@ func (kv *KV) handleUpdate(msg Message) error {
 	}
 	switch kvu.UpdateType {
 	case "put:key":
-		err := kv.Put(kvu.Key, kvu.Value.Data, kvu.Value.DataType, false)
+		err := kv.Put(kvu.Key, kvu.Value, false)
 		if err != nil {
 			return err
 		}
@@ -154,7 +147,7 @@ func (kv *KV) handleEvent(msg Message) error {
 	return nil
 }
 
-func (kv *KV) emitEvent(t string, key string, value KVObject) error {
+func (kv *KV) emitEvent(t string, key string, value []byte) error {
 	k := KVUpdate{
 		UpdateType: t,
 		Key:        key,
@@ -208,27 +201,18 @@ func (kv *KV) getBuckets(tx *bbolt.Tx, buckets []string, create bool) (*bbolt.Bu
 }
 
 // Put value
-func (kv *KV) Put(key string, value []byte, dataType string, e ...bool) error {
+func (kv *KV) Put(key string, value []byte, e ...bool) error {
 	emit := true
 	if len(e) > 0 {
 		emit = e[0]
 	}
 	buckets, k := parsePath(key)
-	obj := KVObject{
-		Data:       value,
-		DataType:   dataType,
-		LastChange: time.Now(),
-	}
-	bobj, err := json.Marshal(obj)
-	if err != nil {
-		return err
-	}
-	err = kv.db.Update(func(tx *bbolt.Tx) error {
+	err := kv.db.Update(func(tx *bbolt.Tx) error {
 		b, _, err := kv.getBuckets(tx, buckets, true)
 		if err != nil {
 			return err
 		}
-		err = b.Put([]byte(k), bobj)
+		err = b.Put([]byte(k), value)
 		if err != nil {
 			return err
 		}
@@ -238,7 +222,7 @@ func (kv *KV) Put(key string, value []byte, dataType string, e ...bool) error {
 		return err
 	}
 	if emit {
-		err = kv.emitEvent("put:key", key, obj)
+		err = kv.emitEvent("put:key", key, value)
 		if err != nil {
 			return err
 		}
@@ -247,19 +231,16 @@ func (kv *KV) Put(key string, value []byte, dataType string, e ...bool) error {
 }
 
 // Get function
-func (kv *KV) Get(key string) (KVObject, error) {
+func (kv *KV) Get(key string) ([]byte, error) {
 	buckets, k := parsePath(key)
-	var obj KVObject
+	obj := []byte{}
 	err := kv.db.View(func(tx *bbolt.Tx) error {
 		b, _, err := kv.getBuckets(tx, buckets, false)
 		if err != nil {
 			return err
 		}
 		v := b.Get([]byte(k))
-		err = json.Unmarshal(v, &obj)
-		if err != nil {
-			return err
-		}
+		obj = v
 		return nil
 	})
 	return obj, err
@@ -283,7 +264,12 @@ func (kv *KV) GetKeys(key string) ([]string, error) {
 		c := bkt.Cursor()
 		txKeys := []string{}
 		for ea, _ := c.First(); ea != nil; ea, _ = c.Next() {
-			txKeys = append(txKeys, string(ea[:]))
+			isBucket := bkt.Bucket(ea)
+			dir := ""
+			if isBucket != nil {
+				dir = "/"
+			}
+			txKeys = append(txKeys, string(ea[:])+dir)
 		}
 		keys = txKeys
 		return nil
@@ -310,7 +296,7 @@ func (kv *KV) DeleteKey(key string, e ...bool) error {
 		return nil
 	})
 	if emit {
-		err = kv.emitEvent("delete:key", key, KVObject{})
+		err = kv.emitEvent("delete:key", key, []byte{})
 		if err != nil {
 			return err
 		}
@@ -337,10 +323,50 @@ func (kv *KV) DeleteBucket(key string, e ...bool) error {
 		return nil
 	})
 	if emit {
-		err = kv.emitEvent("delete:bucket", key, KVObject{})
+		err = kv.emitEvent("delete:bucket", key, []byte{})
 		if err != nil {
 			return err
 		}
 	}
 	return err
+}
+
+// GetTree gets the db tree from the specified root to n-depth.
+// If root is not given, it returns the entire db tree.
+func (kv *KV) GetTree(root ...string) (map[string]interface{}, error) {
+	startPath := ""
+	if len(root) > 0 {
+		startPath = root[0]
+	}
+	tree := map[string]interface{}{}
+	buckets, k := parsePath(startPath)
+	if k != "" {
+		buckets = append(buckets, k)
+	}
+	err := kv.db.View(func(tx *bbolt.Tx) error {
+		b, _, err := kv.getBuckets(tx, buckets, false)
+		if err != nil {
+			return err
+		}
+		tree = enumerateBucket(b)
+		return nil
+	})
+	if err != nil {
+		return tree, err
+	}
+	return tree, nil
+}
+
+func enumerateBucket(bkt *bbolt.Bucket) map[string]interface{} {
+	c := bkt.Cursor()
+	tree := map[string]interface{}{}
+	for ea, v := c.First(); ea != nil; ea, v = c.Next() {
+		isBucket := bkt.Bucket(ea)
+		if isBucket != nil {
+			tree[string(ea[:])] = enumerateBucket(isBucket)
+		} else {
+			tree[string(ea[:])] = json.RawMessage(v)
+		}
+	}
+	return tree
 }

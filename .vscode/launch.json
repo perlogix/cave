@@ -16,7 +16,8 @@
             "args": [
                 "--cluster.bindport=2000",
                 "--cluster.advertisehost=10.0.0.134:2000",
-                "--cluster.discoveryhost=10.0.0.134:2001"
+                "--cluster.discoveryhost=10.0.0.134:2001",
+                "--mode=dev"
             ]
         }
     ]
