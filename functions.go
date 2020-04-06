@@ -21,6 +21,7 @@ func getConfig() (*Config, error) {
 			BindPort:      2000,
 			DiscoveryHost: "127.0.0.1:2000",
 			AdvertiseHost: "127.0.0.1:2000",
+			SyncPort:      1999,
 		},
 		KV: KVConfig{
 			Encryption: true,
@@ -84,6 +85,7 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs.Uint16("cluster.bindport", 2000, "Port to bind to for listening for inbound cluster messages")
 	fs.String("cluster.discoveryhost", "127.0.0.1:2000", "Host/IP to announce its presnece to")
 	fs.String("cluster.advertisehost", "127.0.0.1:2000", "Host/IP to advertise when connecting to the cluster")
+	fs.Uint16("cluster.syncport", 1999, "Port to send cluster sync data to")
 	fs.Bool("kv.encryption", true, "Enable encrypted values in the key-value store")
 	fs.String("kv.dbpath", "kv.db", "Path to save the key-value store if disk persistance is enable")
 	fs.Bool("api.enable", true, "Enable the REST API")

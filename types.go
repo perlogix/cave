@@ -21,8 +21,8 @@ type Bunker struct {
 	Logger  *Log
 	Cluster *Cluster
 	KV      *KV
+	KVInit  bool
 	API     *API
-	events  chan Message
 	updates chan Message
 	sync    chan Message
 }
@@ -32,6 +32,7 @@ type ClusterConfig struct {
 	BindPort      uint16 `yaml:"bind_port"`
 	DiscoveryHost string `yaml:"discovery_host"`
 	AdvertiseHost string `yaml:"advertise_host"`
+	SyncPort      uint16 `yaml:"sync_port"`
 }
 
 //KVConfig type holds the key-value engine objects.

@@ -9,6 +9,7 @@ require (
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/echo/v4 v4.1.16 // indirect
 	github.com/perlin-network/noise v1.1.3
+	github.com/pkg/profile v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.2
 	go.etcd.io/bbolt v1.3.2

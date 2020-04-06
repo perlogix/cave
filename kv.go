@@ -21,6 +21,7 @@ type KV struct {
 	db        *bbolt.DB
 	dbPath    string
 	log       *Log
+	options   *bbolt.Options
 }
 
 // KVUpdate type
@@ -50,22 +51,11 @@ func newKV(app *Bunker) (*KV, error) {
 		log:       app.Logger,
 		dbPath:    app.Config.KV.DBPath,
 	}
-	if _, err := os.Stat(kv.dbPath); os.IsNotExist(err) {
-		p := strings.Split(kv.dbPath, "/")
-		if len(p) > 1 {
-			s := p[:len(p)-1]
-			q := strings.Join(s, "/")
-			err := os.MkdirAll(q, 0755)
-			if err != nil {
-				return kv, err
-			}
-		}
-	}
-	options := &bbolt.Options{
+	kv.options = &bbolt.Options{
 		Timeout:      30 * time.Second,
 		FreelistType: "hashmap",
 	}
-	db, err := bbolt.Open(kv.dbPath, 0755, options)
+	db, err := dbOpen(kv.dbPath, kv.options)
 	if err != nil {
 		return kv, err
 	}
@@ -78,6 +68,33 @@ func newKV(app *Bunker) (*KV, error) {
 		return nil
 	})
 	return kv, nil
+}
+
+func dbOpen(path string, options *bbolt.Options) (*bbolt.DB, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		p := strings.Split(path, "/")
+		if len(p) > 1 {
+			s := p[:len(p)-1]
+			q := strings.Join(s, "/")
+			err := os.MkdirAll(q, 0755)
+			if err != nil {
+				return &bbolt.DB{}, err
+			}
+		}
+	}
+	db, err := bbolt.Open(path, 0755, options)
+	if err != nil {
+		return db, err
+	}
+	return db, nil
+}
+
+func dbClose(db *bbolt.DB) error {
+	err := db.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Start func

@@ -4,7 +4,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"github.com/pkg/profile"
 )
 
 // Featurelist
@@ -28,6 +29,11 @@ var CONFIG *Config
 var TERMINATOR map[string]chan bool
 
 func main() {
+	var p interface{ Stop() }
+	if os.Getenv("PROFILE") != "" {
+		p = profile.Start(profile.ProfilePath("diag/"), profile.MemProfile)
+		defer p.Stop()
+	}
 	TERMINATOR = map[string]chan bool{}
 	kill := make(chan os.Signal)
 	signal.Notify(kill, syscall.SIGKILL, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
@@ -38,6 +44,7 @@ func main() {
 	log := Log{}.New(CONFIG)
 	TERMINATOR["log"] = log.terminator
 	go log.Start()
+	log.Debug("START: Logger")
 	app := &Bunker{
 		Config: CONFIG,
 		Logger: log,
@@ -50,21 +57,21 @@ func main() {
 	app.Cluster = cluster
 	app.updates = make(chan Message, 4096)
 	app.sync = make(chan Message, 4096)
-	err = app.Cluster.registerHandlers(app.events, app.sync)
+	clusterReady := make(chan bool)
+	err = app.Cluster.registerHandlers(app.updates, app.sync)
 	if err != nil {
 		panic(err)
 	}
-	go app.Cluster.Start()
-	for {
-		if app.Cluster.synced {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	go app.Cluster.Start(clusterReady)
+	log.Debug("START: Cluster")
+	log.Debug("Waiting on sync operation.")
+	<-clusterReady
+	log.Debug("Waiting done.")
 	kv, err := newKV(app)
 	if err != nil {
 		panic(err)
 	}
+	app.KVInit = true
 	app.KV = kv
 	TERMINATOR["kv"] = kv.terminate
 	api, err := NewAPI(app)
@@ -74,9 +81,10 @@ func main() {
 	app.API = api
 	TERMINATOR["api"] = api.terminate
 	// START SHIT
-
 	go app.KV.Start()
+	log.Debug("START: KV")
 	go app.API.Start()
+	log.Debug("START: API")
 	<-kill
 	log.Warn("Got kill signal from OS, shutting down...")
 	for _, t := range []string{"api", "kv", "cluster", "log"} {
