@@ -143,20 +143,33 @@ func (a *API) kvGetHandler(c echo.Context) error {
 		a.log.Error(err)
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}
-
 	if len(b) == 0 {
 		return c.JSON(404, jsonError{Message: "Key " + path + " does not exist"})
+	}
+	if c.Request().URL.Query().Get("secret") != "" {
+		data, err := decryptJSON(a.kv.sharedkey, b)
+		if err != nil {
+			return c.Blob(200, "application/json", b)
+		}
+		return c.Blob(200, "application/json", data)
 	}
 	return c.Blob(200, "application/json", b)
 
 }
 
 func (a *API) kvPutHandler(c echo.Context) error {
-	path := trimPath(c.Request().URL.Path, APIPREFIX)
+	path := trimPath(c.Request().URL.Path, KVPREFIX)
 	buf, err := ioutil.ReadAll(c.Request().Body)
 	if err != nil {
 		a.log.Error(err)
 		return c.JSON(400, jsonError{Message: err.Error()})
+	}
+	if c.Request().URL.Query().Get("secret") != "" {
+		data, err := encrytJSON(a.kv.sharedkey, buf)
+		if err != nil {
+			return c.JSON(400, jsonError{Message: err.Error()})
+		}
+		buf = data
 	}
 	err = a.kv.Put(path, buf, "kv")
 	if err != nil {
@@ -167,7 +180,7 @@ func (a *API) kvPutHandler(c echo.Context) error {
 }
 
 func (a *API) kvDeleteHandler(c echo.Context) error {
-	path := trimPath(c.Request().URL.Path, APIPREFIX)
+	path := trimPath(c.Request().URL.Path, KVPREFIX)
 	if strings.HasSuffix(path, "/") {
 		err := a.kv.DeleteBucket(path, "kv")
 		if err != nil {

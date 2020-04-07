@@ -3,11 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"net"
@@ -92,6 +88,22 @@ func (c *Cluster) registerHandlers(updates chan Message, sync chan Message) erro
 					}
 				}()
 			}
+			if msg.DataType == "sync:sharedkey" {
+				go func() {
+					err := c.SendSharedKey(msg)
+					if err != nil {
+						c.log.Error(err)
+					}
+				}()
+			}
+			if msg.DataType == "sync:sendsharedkey" {
+				go func() {
+					err := c.HandleSharedKey(msg)
+					if err != nil {
+						c.log.Error(err)
+					}
+				}()
+			}
 		default:
 			c.log.ErrorF("No channel for message type %s", msg.Type)
 		}
@@ -166,7 +178,11 @@ func (c *Cluster) Start(clusterReady chan bool) {
 				index = 0
 			}
 			if startup && !firstNode {
-				err := c.SyncRequest(clusterReady)
+				err := c.RequestSharedKey()
+				if err != nil {
+					c.log.Error(err)
+				}
+				err = c.SyncRequest(clusterReady)
 				if err != nil {
 					c.log.Error(err)
 					continue
@@ -181,28 +197,6 @@ func (c *Cluster) Start(clusterReady chan bool) {
 			index++
 		}
 	}
-}
-
-// GenerateCrypto generates an RSA 4096 key that will be used to encrypt values in the kv store
-func (c *Cluster) GenerateCrypto() error {
-	if !c.genRSA {
-		return nil
-	}
-	key, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		return err
-	}
-	c.app.rsa = key
-	pemPrivateBlock := &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(key),
-	}
-	b := pem.EncodeToMemory(pemPrivateBlock)
-	err = c.app.KV.writeRSA(b)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // Emit sends a message to the cluster
@@ -294,7 +288,6 @@ func (c *Cluster) SyncRequest(clusterReady chan bool) error {
 		ID:       id.String(),
 		Origin:   c.node.Addr(),
 	}
-	c.log.Pretty(res)
 	b, err := json.Marshal(res)
 	if err != nil {
 		return err
@@ -391,4 +384,91 @@ func (c *Cluster) SyncHandle(addr string, ready chan error, clusterReady chan bo
 	}
 	c.log.Debug("Synced database")
 	return
+}
+
+// RequestSharedKey function
+func (c *Cluster) RequestSharedKey() error {
+	if c.config.Mode == "dev" {
+		return nil
+	}
+	if len(c.locationTable) == 0 {
+		return fmt.Errorf("No peers available to sync with")
+	}
+	c.log.Debug("At least 1 peer to sync with")
+	id := uuid.New()
+	res := &Message{
+		Epoch:    c.epoch + 1,
+		Data:     []byte{},
+		DataType: "sync:sharedkey",
+		Type:     "sync",
+		ID:       id.String(),
+		Origin:   c.node.Addr(),
+	}
+	b, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if len(c.locationTable) > 1 {
+		sort.Slice(c.locationTable, func(i, j int) bool {
+			return c.locationTable[i].Distance < c.locationTable[j].Distance
+		})
+	}
+	c.log.DebugF("Sending sharedkey request to %s", c.locationTable[0].Address)
+	err = c.node.Send(ctx, c.locationTable[0].Address, b)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// SendSharedKey function
+func (c *Cluster) SendSharedKey(msg Message) error {
+	if c.config.Mode == "dev" {
+		return nil
+	}
+	id := uuid.New()
+	data, err := json.Marshal(c.app.sharedKey)
+	if err != nil {
+		return err
+	}
+	res := &Message{
+		Epoch:    c.epoch + 1,
+		Data:     data,
+		DataType: "sync:sendsharedkey",
+		Type:     "sync",
+		ID:       id.String(),
+		Origin:   c.node.Addr(),
+	}
+	b, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c.log.DebugF("Sending sharedkey reply to %s", msg.Origin)
+	err = c.node.Send(ctx, msg.Origin, b)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//HandleSharedKey function
+func (c *Cluster) HandleSharedKey(msg Message) error {
+	if c.config.Mode == "dev" {
+		return nil
+	}
+	var key *AESKey
+	err := json.Unmarshal(msg.Data, &key)
+	if err != nil {
+		return err
+	}
+	err = c.app.Crypto.SealSharedKey(key, c.app.Crypto.privkey, false)
+	if err != nil {
+		return err
+	}
+	c.log.Debug("Got shared key from " + msg.Origin)
+	return nil
 }

@@ -1,3 +1,4 @@
 bunker
 *.db
 diag/
+*.key

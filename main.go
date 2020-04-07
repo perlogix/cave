@@ -49,6 +49,11 @@ func main() {
 		Config: CONFIG,
 		Logger: log,
 	}
+	crypto, err := newCrypto()
+	if err != nil {
+		panic(err)
+	}
+	app.Crypto = crypto
 	cluster, err := newCluster(app)
 	if err != nil {
 		panic(err)
@@ -67,6 +72,16 @@ func main() {
 	log.Debug("Waiting on sync operation.")
 	<-clusterReady
 	log.Debug("Waiting done.")
+	if app.Cluster.genRSA {
+		err = app.Crypto.GenerateSharedKey()
+		if err != nil {
+			panic(err)
+		}
+		err = app.Crypto.SealSharedKey(app.Crypto.sharedkey, app.Crypto.privkey, false)
+		if err != nil {
+			panic(err)
+		}
+	}
 	kv, err := newKV(app)
 	if err != nil {
 		panic(err)
@@ -74,10 +89,7 @@ func main() {
 	app.KVInit = true
 	app.KV = kv
 	TERMINATOR["kv"] = kv.terminate
-	err = app.Cluster.GenerateCrypto()
-	if err != nil {
-		panic(err)
-	}
+
 	auth, err := NewAuth(app)
 	if err != nil {
 		panic(err)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rsa"
 	"time"
 )
 
@@ -19,16 +18,17 @@ type Config struct {
 
 // Bunker struct wraps all the app functions
 type Bunker struct {
-	Config  *Config
-	Logger  *Log
-	Cluster *Cluster
-	KV      *KV
-	KVInit  bool
-	API     *API
-	Auth    *AuthService
-	updates chan Message
-	sync    chan Message
-	rsa     *rsa.PrivateKey
+	Config    *Config
+	Logger    *Log
+	Cluster   *Cluster
+	KV        *KV
+	KVInit    bool
+	API       *API
+	Auth      *AuthService
+	Crypto    *Crypto
+	updates   chan Message
+	sync      chan Message
+	sharedKey *AESKey
 }
 
 //ClusterConfig type holds the cluster interface objects.
