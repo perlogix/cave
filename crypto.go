@@ -29,6 +29,11 @@ type AESKey struct {
 	Pass      []byte
 }
 
+//Secret type
+type Secret struct {
+	Secret []byte `json:"secret"`
+}
+
 func (a *AESKey) newGCM() (cipher.AEAD, error) {
 	block, err := aes.NewCipher(a.Pass)
 	if err != nil {
@@ -182,18 +187,25 @@ func encrytJSON(key *AESKey, data interface{}) ([]byte, error) {
 		return secret, err
 	}
 	txt := gcm.Seal(n, key.Key, b, nil)
-	secret = append([]byte("SECRET+"), txt...)
+	s := &Secret{
+		Secret: txt,
+	}
+	secret, err = json.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
 	return secret, nil
 }
 
 func decryptJSON(key *AESKey, data []byte) ([]byte, error) {
 	var secret []byte
+	var obj Secret
+	err := json.Unmarshal(data, &obj)
 	gcm, err := key.newGCM()
 	if err != nil {
 		return nil, err
 	}
-	sec := data[len([]byte("SECRET+")):]
-	n, text := sec[:key.NonceSize], sec[key.NonceSize:]
+	n, text := obj.Secret[:key.NonceSize], obj.Secret[key.NonceSize:]
 	s, err := gcm.Open(nil, n, text, nil)
 	if err != nil {
 		return nil, err

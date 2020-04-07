@@ -355,6 +355,7 @@ func (kv *KV) GetTree(prefix string, root ...string) (map[string]interface{}, er
 	if k != "" {
 		buckets = append(buckets, k)
 	}
+	fmt.Println(buckets, k)
 	err := kv.db.View(func(tx *bbolt.Tx) error {
 		b, _, err := kv.getBuckets(tx, buckets, prefix, false)
 		if err != nil {

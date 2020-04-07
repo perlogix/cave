@@ -113,7 +113,7 @@ func (a *API) kvHandler(c echo.Context) error {
 }
 
 func (a *API) treeHandler(c echo.Context, path string) error {
-	tree, err := a.kv.GetTree(strings.TrimSuffix(path, "_tree"))
+	tree, err := a.kv.GetTree("kv", path)
 	if err != nil {
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}
@@ -122,7 +122,7 @@ func (a *API) treeHandler(c echo.Context, path string) error {
 
 func (a *API) kvGetHandler(c echo.Context) error {
 	path := trimPath(c.Request().URL.Path, KVPREFIX)
-	if strings.HasSuffix(c.Request().URL.Path, "/_tree") {
+	if c.Request().URL.Query().Get("tree") != "" {
 		return a.treeHandler(c, path)
 	}
 	if strings.HasSuffix(path, "/") || path == "" {
