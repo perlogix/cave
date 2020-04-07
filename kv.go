@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"strings"
@@ -58,6 +60,10 @@ func newKV(app *Bunker) (*KV, error) {
 		if err != nil {
 			return err
 		}
+		_, err = tx.CreateBucketIfNotExists([]byte("_system"))
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	return kv, nil
@@ -92,6 +98,12 @@ func dbClose(db *bbolt.DB) error {
 
 // Start func
 func (kv *KV) Start() {
+	if kv.app.rsa == nil {
+		err := kv.loadRSA()
+		if err != nil {
+			panic(err)
+		}
+	}
 	for {
 		select {
 		case <-kv.terminate:
@@ -105,6 +117,47 @@ func (kv *KV) Start() {
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
+}
+
+func (kv *KV) writeRSA(pem []byte) error {
+	err := kv.db.Update(func(tx *bbolt.Tx) error {
+		bkt := tx.Bucket([]byte("_system"))
+		if bkt == nil {
+			return fmt.Errorf("_system bucket does not exist")
+		}
+		err := bkt.Put([]byte("rsa"), pem)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
+}
+
+func (kv *KV) loadRSA() error {
+	var b []byte
+	err := kv.db.View(func(tx *bbolt.Tx) error {
+		bkt := tx.Bucket([]byte("_system"))
+		if bkt == nil {
+			return fmt.Errorf("_system bucket does not exist")
+		}
+		v := bkt.Get([]byte("rsa"))
+		if len(v) == 0 {
+			return fmt.Errorf("RSA key is blank")
+		}
+		b = v
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	rawPem, _ := pem.Decode(b)
+	privKey, err := x509.ParsePKCS1PrivateKey(rawPem.Bytes)
+	if err != nil {
+		return err
+	}
+	kv.app.rsa = privKey
+	return nil
 }
 
 func (kv *KV) handleUpdate(msg Message) error {

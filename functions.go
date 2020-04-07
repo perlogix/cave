@@ -99,6 +99,7 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs.String("ssl.certificate", "my.crt", "Path to the SSL certificate to use")
 	fs.String("ssl.key", "my.key", "Path to the SSL private key to use")
 	fs.Uint64("performance.buffersize", 4096, "Internal buffer size")
+	fs.String("auth.provider", "token", "Authentication method selection (token, basic, none)")
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		return fs, err

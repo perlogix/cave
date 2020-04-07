@@ -74,6 +74,16 @@ func main() {
 	app.KVInit = true
 	app.KV = kv
 	TERMINATOR["kv"] = kv.terminate
+	err = app.Cluster.GenerateCrypto()
+	if err != nil {
+		panic(err)
+	}
+	auth, err := NewAuth(app)
+	if err != nil {
+		panic(err)
+	}
+	app.Auth = auth
+	TERMINATOR["auth"] = auth.terminate
 	api, err := NewAPI(app)
 	if err != nil {
 		panic(err)
@@ -87,7 +97,7 @@ func main() {
 	log.Debug("START: API")
 	<-kill
 	log.Warn("Got kill signal from OS, shutting down...")
-	for _, t := range []string{"api", "kv", "cluster", "log"} {
+	for _, t := range []string{"api", "auth", "kv", "cluster", "log"} {
 		log.Warn("Shutting down " + t)
 		TERMINATOR[t] <- true
 	}

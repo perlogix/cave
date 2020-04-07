@@ -30,3 +30,7 @@ ssl:
 
 performance:
     buffer_size: 4096
+
+auth:
+    # token | basic | none
+    provider: jwt

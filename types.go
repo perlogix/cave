@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rsa"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type Config struct {
 	UI      UIConfig      `yaml:"ui"`
 	SSL     SSLConfig     `yaml:"ssl"`
 	Perf    PerfConfig    `yaml:"performance"`
+	Auth    AuthConfig    `yaml:"auth"`
 }
 
 // Bunker struct wraps all the app functions
@@ -23,8 +25,10 @@ type Bunker struct {
 	KV      *KV
 	KVInit  bool
 	API     *API
+	Auth    *AuthService
 	updates chan Message
 	sync    chan Message
+	rsa     *rsa.PrivateKey
 }
 
 //ClusterConfig type holds the cluster interface objects.
@@ -70,6 +74,11 @@ type SSLConfig struct {
 //PerfConfig holds performance configs
 type PerfConfig struct {
 	BufferSize uint64 `yaml:"buffer_size"`
+}
+
+// AuthConfig type
+type AuthConfig struct {
+	Provider string `yaml:"provider"`
 }
 
 // Message type represents a message on the wire

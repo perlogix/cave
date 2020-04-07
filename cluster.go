@@ -3,7 +3,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net"
@@ -30,6 +34,7 @@ type Cluster struct {
 	peers         []noise.ID
 	log           *Log
 	locationTable []node
+	genRSA        bool
 }
 
 func newCluster(app *Bunker) (*Cluster, error) {
@@ -40,6 +45,7 @@ func newCluster(app *Bunker) (*Cluster, error) {
 		log:       app.Logger,
 		terminate: make(chan bool),
 		synced:    make(chan bool),
+		genRSA:    false,
 	}
 	if c.config.Mode == "dev" {
 		return c, nil
@@ -97,6 +103,7 @@ func (c *Cluster) registerHandlers(updates chan Message, sync chan Message) erro
 //Start starts the cluster
 func (c *Cluster) Start(clusterReady chan bool) {
 	if c.config.Mode == "dev" {
+		c.genRSA = true
 		clusterReady <- true
 		return
 	}
@@ -167,12 +174,35 @@ func (c *Cluster) Start(clusterReady chan bool) {
 				startup = false
 			}
 			if startup && firstNode {
+				c.genRSA = true
 				clusterReady <- true
 			}
 			time.Sleep(500 * time.Millisecond)
 			index++
 		}
 	}
+}
+
+// GenerateCrypto generates an RSA 4096 key that will be used to encrypt values in the kv store
+func (c *Cluster) GenerateCrypto() error {
+	if !c.genRSA {
+		return nil
+	}
+	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		return err
+	}
+	c.app.rsa = key
+	pemPrivateBlock := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+	b := pem.EncodeToMemory(pemPrivateBlock)
+	err = c.app.KV.writeRSA(b)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Emit sends a message to the cluster

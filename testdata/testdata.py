@@ -10,7 +10,7 @@ URL = "http://localhost:9000/api/v1/kv/"
 
 data = {}
 iterations = 0
-while iterations <= 10:
+while iterations <= 0:
     with open('data.json', 'r') as f:
         data = json.loads(f.readline())
         while data:
