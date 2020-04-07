@@ -91,3 +91,8 @@ func (a *AuthService) ChangePassword(username string, password string) error {
 	}
 	return nil
 }
+
+// Middleware function
+func (a *AuthService) Middleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return a.provider.Middleware(next)
+}

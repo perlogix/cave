@@ -169,17 +169,17 @@ func (kv *KV) handleUpdate(msg Message) error {
 	}
 	switch kvu.UpdateType {
 	case "put:key":
-		err := kv.Put(kvu.Key, kvu.Value, false)
+		err := kv.Put(kvu.Key, kvu.Value, "kv", false)
 		if err != nil {
 			return err
 		}
 	case "delete:key":
-		err := kv.DeleteKey(kvu.Key, false)
+		err := kv.DeleteKey(kvu.Key, "kv", false)
 		if err != nil {
 			return err
 		}
 	case "delete:bucket":
-		err := kv.DeleteBucket(kvu.Key, false)
+		err := kv.DeleteBucket(kvu.Key, "kv", false)
 		if err != nil {
 			return err
 		}
@@ -227,13 +227,13 @@ func parsePath(path string) (buckets []string, key string) {
 	return paths[:len(paths)-1], last
 }
 
-func (kv *KV) getBuckets(tx *bbolt.Tx, buckets []string, create bool) (*bbolt.Bucket, string, error) {
+func (kv *KV) getBuckets(tx *bbolt.Tx, buckets []string, prefix string, create bool) (*bbolt.Bucket, string, error) {
 	var bkt *bbolt.Bucket
 	var name string
-	name = "kv"
-	bkt = tx.Bucket([]byte("kv"))
+	name = prefix
+	bkt = tx.Bucket([]byte(prefix))
 	if len(buckets) == 0 {
-		return bkt, "kv", nil
+		return bkt, prefix, nil
 	}
 	for _, b := range buckets {
 		var err error
@@ -254,14 +254,14 @@ func (kv *KV) getBuckets(tx *bbolt.Tx, buckets []string, create bool) (*bbolt.Bu
 }
 
 // Put value
-func (kv *KV) Put(key string, value []byte, e ...bool) error {
+func (kv *KV) Put(key string, value []byte, prefix string, e ...bool) error {
 	emit := true
 	if len(e) > 0 {
 		emit = e[0]
 	}
 	buckets, k := parsePath(key)
 	err := kv.db.Update(func(tx *bbolt.Tx) error {
-		b, _, err := kv.getBuckets(tx, buckets, true)
+		b, _, err := kv.getBuckets(tx, buckets, prefix, true)
 		if err != nil {
 			return err
 		}
@@ -284,11 +284,11 @@ func (kv *KV) Put(key string, value []byte, e ...bool) error {
 }
 
 // Get function
-func (kv *KV) Get(key string) ([]byte, error) {
+func (kv *KV) Get(key string, prefix string) ([]byte, error) {
 	buckets, k := parsePath(key)
 	obj := []byte{}
 	err := kv.db.View(func(tx *bbolt.Tx) error {
-		b, _, err := kv.getBuckets(tx, buckets, false)
+		b, _, err := kv.getBuckets(tx, buckets, prefix, false)
 		if err != nil {
 			return err
 		}
@@ -300,11 +300,11 @@ func (kv *KV) Get(key string) ([]byte, error) {
 }
 
 // GetKeys gets keys from a bucket
-func (kv *KV) GetKeys(key string) ([]string, error) {
+func (kv *KV) GetKeys(key string, prefix string) ([]string, error) {
 	buckets, k := parsePath(key)
 	var keys []string
 	err := kv.db.View(func(tx *bbolt.Tx) error {
-		b, _, err := kv.getBuckets(tx, buckets, false)
+		b, _, err := kv.getBuckets(tx, buckets, prefix, false)
 		if err != nil {
 			return err
 		}
@@ -331,14 +331,14 @@ func (kv *KV) GetKeys(key string) ([]string, error) {
 }
 
 // DeleteKey function
-func (kv *KV) DeleteKey(key string, e ...bool) error {
+func (kv *KV) DeleteKey(key string, prefix string, e ...bool) error {
 	emit := true
 	if len(e) > 0 {
 		emit = e[0]
 	}
 	buckets, k := parsePath(key)
 	err := kv.db.Update(func(tx *bbolt.Tx) error {
-		b, _, err := kv.getBuckets(tx, buckets, false)
+		b, _, err := kv.getBuckets(tx, buckets, prefix, false)
 		if err != nil {
 			return err
 		}
@@ -358,14 +358,14 @@ func (kv *KV) DeleteKey(key string, e ...bool) error {
 }
 
 // DeleteBucket function
-func (kv *KV) DeleteBucket(key string, e ...bool) error {
+func (kv *KV) DeleteBucket(key string, prefix string, e ...bool) error {
 	emit := true
 	if len(e) > 0 {
 		emit = e[0]
 	}
 	buckets, k := parsePath(key)
 	err := kv.db.Update(func(tx *bbolt.Tx) error {
-		b, _, err := kv.getBuckets(tx, buckets, false)
+		b, _, err := kv.getBuckets(tx, buckets, prefix, false)
 		if err != nil {
 			return err
 		}
@@ -386,7 +386,7 @@ func (kv *KV) DeleteBucket(key string, e ...bool) error {
 
 // GetTree gets the db tree from the specified root to n-depth.
 // If root is not given, it returns the entire db tree.
-func (kv *KV) GetTree(root ...string) (map[string]interface{}, error) {
+func (kv *KV) GetTree(prefix string, root ...string) (map[string]interface{}, error) {
 	startPath := ""
 	if len(root) > 0 {
 		startPath = root[0]
@@ -397,7 +397,7 @@ func (kv *KV) GetTree(root ...string) (map[string]interface{}, error) {
 		buckets = append(buckets, k)
 	}
 	err := kv.db.View(func(tx *bbolt.Tx) error {
-		b, _, err := kv.getBuckets(tx, buckets, false)
+		b, _, err := kv.getBuckets(tx, buckets, prefix, false)
 		if err != nil {
 			return err
 		}

@@ -15,7 +15,10 @@ import (
 
 const (
 	// APIPREFIX path
-	APIPREFIX = "/api/v1/kv/"
+	APIPREFIX = "/api/v1/"
+
+	// KVPREFIX path
+	KVPREFIX = "/api/v1/kv/"
 
 	// UIPREFIX path
 	UIPREFIX = "/ui"
@@ -36,6 +39,7 @@ type API struct {
 	terminate chan bool
 	kv        *KV
 	http      *echo.Echo
+	auth      *AuthService
 }
 
 //NewAPI function
@@ -45,14 +49,19 @@ func NewAPI(app *Bunker) (*API, error) {
 		config: app.Config,
 		log:    app.Logger,
 		kv:     app.KV,
+		auth:   app.Auth,
 	}
 	a.terminate = make(chan bool)
 	a.http = echo.New()
 	a.http.HideBanner = true
 	//a.http.Use(middleware.Recover())
 	a.http.Use(a.log.EchoLogger())
-	a.http.Any(APIPREFIX+"*", a.kvHandler)
-	a.http.Static(UIPREFIX, "./ui/")
+
+	a.http.Any(KVPREFIX+"*", a.kvHandler, a.auth.Middleware)
+	a.http.POST(APIPREFIX+"login", a.routeLogin)
+	a.http.Static(UIPREFIX+"*", "./ui/")
+
+	a.http.HidePort = true
 	a.http.Debug = true
 	return a, nil
 }
@@ -60,6 +69,11 @@ func NewAPI(app *Bunker) (*API, error) {
 // Start starts a new server
 func (a *API) Start() {
 	go a.watch()
+	scheme := "http://"
+	if a.config.SSL.Enable {
+		scheme = "https://"
+	}
+	a.log.InfoF("API listening on %s0.0.0.0:%v", scheme, a.config.API.Port)
 	a.http.Start(fmt.Sprintf("0.0.0.0:%v", a.config.API.Port))
 }
 
@@ -79,6 +93,10 @@ func (a *API) watch() {
 			time.Sleep(500 * time.Millisecond)
 		}
 	}
+}
+
+func (a *API) routeLogin(c echo.Context) error {
+	return c.JSON(200, map[string]string{"message": "ok"})
 }
 
 func (a *API) kvHandler(c echo.Context) error {
@@ -103,12 +121,12 @@ func (a *API) treeHandler(c echo.Context, path string) error {
 }
 
 func (a *API) kvGetHandler(c echo.Context) error {
-	path := trimPath(c.Request().URL.Path, APIPREFIX)
-	if strings.HasSuffix(path, "_tree") {
+	path := trimPath(c.Request().URL.Path, KVPREFIX)
+	if strings.HasSuffix(c.Request().URL.Path, "/_tree") {
 		return a.treeHandler(c, path)
 	}
 	if strings.HasSuffix(path, "/") || path == "" {
-		k, err := a.kv.GetKeys(path)
+		k, err := a.kv.GetKeys(path, "kv")
 		if err != nil {
 			a.log.Error(err)
 			return c.JSON(500, jsonError{Message: err.Error()})
@@ -120,7 +138,7 @@ func (a *API) kvGetHandler(c echo.Context) error {
 		}
 		return c.JSON(200, k)
 	}
-	b, err := a.kv.Get(path)
+	b, err := a.kv.Get(path, "kv")
 	if err != nil {
 		a.log.Error(err)
 		return c.JSON(500, jsonError{Message: err.Error()})
@@ -140,7 +158,7 @@ func (a *API) kvPutHandler(c echo.Context) error {
 		a.log.Error(err)
 		return c.JSON(400, jsonError{Message: err.Error()})
 	}
-	err = a.kv.Put(path, buf)
+	err = a.kv.Put(path, buf, "kv")
 	if err != nil {
 		a.log.Error(err)
 		return c.JSON(500, jsonError{Message: err.Error()})
@@ -151,7 +169,7 @@ func (a *API) kvPutHandler(c echo.Context) error {
 func (a *API) kvDeleteHandler(c echo.Context) error {
 	path := trimPath(c.Request().URL.Path, APIPREFIX)
 	if strings.HasSuffix(path, "/") {
-		err := a.kv.DeleteBucket(path)
+		err := a.kv.DeleteBucket(path, "kv")
 		if err != nil {
 			if err == bbolt.ErrBucketNotFound {
 				return c.JSON(404, jsonError{Message: err.Error()})
@@ -159,7 +177,7 @@ func (a *API) kvDeleteHandler(c echo.Context) error {
 			return c.JSON(500, jsonError{Message: err.Error()})
 		}
 	}
-	err := a.kv.DeleteKey(path)
+	err := a.kv.DeleteKey(path, "kv")
 	if err != nil {
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}
