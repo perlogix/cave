@@ -3,13 +3,11 @@
 angular.module('bunker', [])
     .controller('bunker', ['$scope', '$http', function ($scope, $http) {
         $scope.baseurl = "http://localhost:9000/api/v1/kv/"
-
         $scope.url = []
         $scope.keys = []
+        $scope.nodes = []
+        $scope.active = "/"
         $scope.activeItem = null
-
-
-
         $scope.getkeys = function (path) {
             if (path == '') {
                 $scope.url = []
@@ -45,7 +43,20 @@ angular.module('bunker', [])
             )
         }
 
+        $scope.getnodes = function () {
+            $http({
+                method: 'GET',
+                url: "http://localhost:9000/api/v1/cluster/nodes"
+            }).then(function (res) {
+                $scope.nodes = res.data
+            }, function (res) {
+                console.log(res)
+            })
+
+        }
+
         $scope.clickKey = function (key) {
+            $scope.active = key
             uri = $scope.url.join("/") + key.key
             if (key.dir) {
 
@@ -95,6 +106,6 @@ angular.module('bunker', [])
             }
             $scope.getkeys(url.join("/") + "/")
         }
-
+        $scope.getnodes()
         $scope.getkeys("")
     }])

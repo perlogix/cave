@@ -19,50 +19,73 @@
     </head>
 
     <body ng-controller="bunker">
-        <div class="container">
+        <div class="container-fluid">
+            <div class="row align-items-center brand">
+                <!-- As a heading -->
+                <nav class="navbar navbar-light bg-dark text-light col">
+                    <span class="navbar-brand mb-0 h1 text-light">BUNKER</span>
+                </nav>
+            </div>
             <div class="col">
-                <div class="row align-items-center brand">
-                    <!-- As a heading -->
-                    <nav class="navbar navbar-light bg-dark text-light col">
-                        <span class="navbar-brand mb-0 h1 text-light">BUNKER</span>
-                    </nav>
-                </div>
                 <div class="row align-items-center topnav">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb">
-                            <a href="#" class="breadcrumb-item active" aria-current="page" ng-click="getkeys('')">
+                            <a href="#" class="breadcrumb-item text-info" aria-current="page" ng-click="getkeys('')">
                                 <i class="fa fa-database"></i>
                             </a>
-                            <a href="#" class="breadcrumb-item {{  }}" aria-current="page" ng-repeat="u in url" ng-click="breadcrumbClick(u)">
+                            <a href="#" class="breadcrumb-item text-info" aria-current="page" ng-repeat="u in url" ng-click="breadcrumbClick(u)">
                                 {{ u }}
                             </a>
                         </ol>
                     </nav>
                 </div>
             </div>
-            <div class="row main">
-                <div class="col-sm-4">
-                    <ul class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action justify-content-between d-flex" ng-repeat="k in keys | orderBy:['-dir', 'key']" ng-click="clickKey(k)" ng-model="keys">
-                            {{ stripSlash(k.key) }}
-                            <i class="fa fa-folder" ng-show="k.dir"></i>
-                        </a>
-                    </ul>
-                </div>
-                <div class="col-xl-8 h-100">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" ng-model="decrypt" id="decrypt">
-                                <label class="form-check-label" for="decrypt">Decrypt secrets</label>
-                            </div>
+            <div class="row">
+                <div class="col-9">
+                    <div class="col">
+
+                    </div>
+                    <div class="row main">
+                        <div class="col-sm-4">
+                            <ul class="list-group">
+                                <a href="#" class="list-group-item list-group-item-action justify-content-between d-flex ng-class: k.dir ? 'bg-info text-light' : ''" ng-repeat="k in keys | orderBy:['-dir', 'key']" ng-click="clickKey(k)" ng-model="keys">
+                                    {{ stripSlash(k.key) }}
+                                    <i class="fa fa-folder" ng-show="k.dir"></i>
+                                </a>
+                            </ul>
                         </div>
-                        <div class="card-body h-100">
-                            <pre><code>
+                        <div class="col-xl-8 h-100">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" ng-model="decrypt" id="decrypt">
+                                        <label class="form-check-label" for="decrypt">Decrypt secrets</label>
+                                    </div>
+                                </div>
+                                <div class="card-body h-100">
+                                    <pre><code class="language-json">
 {{ activeItem }}
                             </code>
                             </pre>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                </div>
+                <div class="col-2">
+                    <div class="row">
+                        <ul class="list-group w-100 ml-2">
+                            <li class="list-group-item" ng-repeat="n in nodes | orderBy:+Address">
+
+                                <div class="d-flex w-100 justify-content-between">
+                                    <i class="fa fa-server text-success align-middle"></i>
+                                    <h5 class="mb-1">{{ n.Address }}</h5>
+                                </div>
+                                <p class="mb-1 text-monospace text-right">
+                                    <small>{{ n.public_key.slice(0,17) }}</small>
+                                </p>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>

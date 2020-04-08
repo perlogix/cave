@@ -60,6 +60,7 @@ func NewAPI(app *Bunker) (*API, error) {
 	a.http.Any(KVPREFIX+"*", a.kvHandler, a.auth.Middleware)
 	a.http.POST(APIPREFIX+"login", a.routeLogin)
 	a.http.Static(UIPREFIX+"*", "./ui/")
+	a.http.GET(APIPREFIX+"cluster/nodes", a.routeClusterNodes)
 
 	a.http.HidePort = true
 	a.http.Debug = true
@@ -195,6 +196,15 @@ func (a *API) kvDeleteHandler(c echo.Context) error {
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}
 	return c.JSON(200, jsonError{Message: "ok"})
+}
+
+func (a *API) routeClusterNodes(c echo.Context) error {
+	if a.config.Mode == "dev" {
+		return c.JSON(200, map[string]interface{}{})
+	}
+	peers := a.app.Cluster.peers
+	self := a.app.Cluster.node.ID()
+	return c.JSON(200, append(peers, self))
 }
 
 func trimPath(path string, prefix string) string {
