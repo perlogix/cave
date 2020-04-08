@@ -1,9 +1,63 @@
 <!DOCTYPE html>
 
-<head>
-    <title>BUNKER</title>
-</head>
+<html ng-app="bunker" lang="en">
 
-<body>
-    <p>Hello.</p>
-</body>
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <title>BUNKER</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+        <script src="ui/bunker.js"></script>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="ui/bunker.css">
+        <link rel="shortcut icon" href="ui/favicon.ico">
+    </head>
+
+    <body ng-controller="bunker">
+        <div class="container">
+            <div class="col">
+                <div class="row align-items-center topnav">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <a href="#" class="breadcrumb-item active" aria-current="page" ng-click="getkeys('')">
+                                <i class="fa fa-database"></i>
+                            </a>
+                            <a href="#" class="breadcrumb-item {{  }}" aria-current="page" ng-repeat="u in url" ng-click="breadcrumbClick(u)">
+                                {{ u }}
+                            </a>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+            <div class="row main">
+                <div class="col-sm-4">
+                    <ul class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action justify-content-between d-flex" ng-repeat="k in keys | orderBy:['-dir', 'key']" ng-click="clickKey(k)" ng-model="keys">
+                            {{ stripSlash(k.key) }}
+                            <i class="fa fa-folder" ng-show="k.dir"></i>
+                        </a>
+                    </ul>
+                </div>
+                <div class="col-xl-8 h-100">
+                    <div class="card h-100">
+                        <div class="card-body h-100">
+                            <pre><code>
+{{ activeItem }}
+                            </code>
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+
+
+
+
+</html>
