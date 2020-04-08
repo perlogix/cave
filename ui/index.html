@@ -21,6 +21,12 @@
     <body ng-controller="bunker">
         <div class="container">
             <div class="col">
+                <div class="row align-items-center brand">
+                    <!-- As a heading -->
+                    <nav class="navbar navbar-light bg-dark text-light col">
+                        <span class="navbar-brand mb-0 h1 text-light">BUNKER</span>
+                    </nav>
+                </div>
                 <div class="row align-items-center topnav">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb">
@@ -45,6 +51,12 @@
                 </div>
                 <div class="col-xl-8 h-100">
                     <div class="card h-100">
+                        <div class="card-header">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" ng-model="decrypt" id="decrypt">
+                                <label class="form-check-label" for="decrypt">Decrypt secrets</label>
+                            </div>
+                        </div>
                         <div class="card-body h-100">
                             <pre><code>
 {{ activeItem }}

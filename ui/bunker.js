@@ -5,9 +5,10 @@ angular.module('bunker', [])
         $scope.baseurl = "http://localhost:9000/api/v1/kv/"
 
         $scope.url = []
-        $scope.keys = [
-        ]
+        $scope.keys = []
         $scope.activeItem = null
+
+
 
         $scope.getkeys = function (path) {
             if (path == '') {
@@ -55,6 +56,19 @@ angular.module('bunker', [])
                     method: 'GET',
                     url: $scope.baseurl + uri,
                 }).then(function (res) {
+                    if (res.data.secret != undefined && $scope.decrypt) {
+                        $http({
+                            method: 'GET',
+                            url: $scope.baseurl + uri,
+                            params: {
+                                secret: true
+                            }
+                        }).then(function (res) {
+                            $scope.activeItem = JSON.stringify(res.data, undefined, 4)
+                        }, function (res) {
+                            console.log(res)
+                        })
+                    }
                     $scope.activeItem = JSON.stringify(res.data, undefined, 4)
                 }, function (res) {
                     console.log(res)
@@ -73,7 +87,14 @@ angular.module('bunker', [])
             return item.replace("/", "")
         }
 
-        $scope.sortKeys = function () {
-
+        $scope.breadcrumbClick = function (crumb) {
+            idx = $scope.url.indexOf(crumb)
+            url = []
+            for (var i = 0; i <= idx; i++) {
+                url.push($scope.url[i])
+            }
+            $scope.getkeys(url.join("/") + "/")
         }
+
+        $scope.getkeys("")
     }])
