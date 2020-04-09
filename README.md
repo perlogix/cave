@@ -9,3 +9,5 @@ Horizontally scale-able container-native key/value store.
   * DB export
   * mgmt API
   * auth api
+* Testing
+* Dockerfile
