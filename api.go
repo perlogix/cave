@@ -200,11 +200,17 @@ func (a *API) kvDeleteHandler(c echo.Context) error {
 
 func (a *API) routeClusterNodes(c echo.Context) error {
 	if a.config.Mode == "dev" {
-		return c.JSON(200, map[string]interface{}{})
+		m := map[string]interface{}{}
+		m["mode"] = "dev"
+		m["nodes"] = append([]map[string]string{}, map[string]string{"Address": a.config.Cluster.AdvertiseHost, "public_key": ""})
+		return c.JSON(200, m)
 	}
+	m := map[string]interface{}{}
 	peers := a.app.Cluster.peers
 	self := a.app.Cluster.node.ID()
-	return c.JSON(200, append(peers, self))
+	m["nodes"] = append(peers, self)
+	m["mode"] = "cluster"
+	return c.JSON(200, m)
 }
 
 func trimPath(path string, prefix string) string {

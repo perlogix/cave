@@ -21,11 +21,13 @@
     <body ng-controller="bunker">
         <div class="container-fluid">
             <div class="row align-items-center brand">
-                <!-- As a heading -->
-                <nav class="navbar navbar-light bg-dark text-light col">
-                    <span class="navbar-brand mb-0 h1 text-light">BUNKER</span>
+                <nav class="navbar navbar-light bg-light text-dark col">
+                    <span class="navbar-brand mb-0 h1 text-info">BUNKER</span>
+                    <img src="https://yeticloud.com/assets/img/logo/logo.png" id="logo">
                 </nav>
+
             </div>
+
             <div class="col">
                 <div class="row align-items-center topnav">
                     <nav aria-label="breadcrumb">
@@ -76,9 +78,8 @@
                     <div class="row">
                         <ul class="list-group w-100 ml-2">
                             <li class="list-group-item" ng-repeat="n in nodes | orderBy:+Address">
-
                                 <div class="d-flex w-100 justify-content-between">
-                                    <i class="fa fa-server text-success align-middle"></i>
+                                    <i class="fa fa-server text-dark align-middle"></i>
                                     <h5 class="mb-1">{{ n.Address }}</h5>
                                 </div>
                                 <p class="mb-1 text-monospace text-right">
@@ -91,8 +92,5 @@
             </div>
         </div>
     </body>
-
-
-
 
 </html>

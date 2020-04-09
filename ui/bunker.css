@@ -3,11 +3,20 @@
     height: 80vh;
 }
 
-.hidden {
+.hide {
     display: none;
+}
+
+.show {
+    display: block;
 }
 
 .brand {
     margin-bottom: 20px;
     color: #FFF;
+}
+
+#logo {
+    width: 200px;
+    height: auto;
 }
