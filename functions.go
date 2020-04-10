@@ -40,6 +40,7 @@ func getConfig() (*Config, error) {
 		},
 		SSL: SSLConfig{
 			Enable:         true,
+			SSLPort:        443,
 			SSLCertificate: "my.crt",
 			SSLKey:         "my.key",
 		},
@@ -98,6 +99,7 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs.Uint16("ui.port", 443, "Port for the embedded web UI to listen on")
 	fs.Bool("ui.authentication", true, "Enable authentication for the embedded web UI")
 	fs.Bool("ssl.enable", true, "Enable SSL for the REST API and embedded web UI")
+	fs.Uint16("ssl.port", 443, "Port to serve SSL traffic on")
 	fs.String("ssl.certificate", "my.crt", "Path to the SSL certificate to use")
 	fs.String("ssl.key", "my.key", "Path to the SSL private key to use")
 	fs.Bool("performance.enablemetrics", true, "Enable Prometheus metrics endpoint and collection")

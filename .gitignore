@@ -2,3 +2,4 @@ bunker
 *.db
 diag/
 *.key
+rice*

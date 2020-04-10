@@ -36,9 +36,16 @@ type KVUpdate struct {
 	Value      []byte `json:"value"`
 }
 
-//KVStats struct
-type KVStats struct {
+////////////////////////// IMPLEMENT ///////////////////////
+
+//KVObject struct
+type KVObject struct {
+	LastUpdated time.Time `json:"last_updated"`
+	Secret      bool      `json:"secret"`
+	Data        string    `json:"data"`
 }
+
+////////////////////////////////////////////////////////////
 
 func newKV(app *Bunker) (*KV, error) {
 	kv := &KV{

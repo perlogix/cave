@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"strings"
 	"time"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.etcd.io/bbolt"
@@ -22,7 +24,7 @@ const (
 	KVPREFIX = "/api/v1/kv/"
 
 	// UIPREFIX path
-	UIPREFIX = "/ui"
+	UIPREFIX = "/ui/"
 
 	// SYSPREFIX path
 	SYSPREFIX = "/system"
@@ -55,21 +57,23 @@ func NewAPI(app *Bunker) (*API, error) {
 	a.terminate = make(chan bool)
 	a.http = echo.New()
 	a.http.HideBanner = true
+	a.http.HidePort = true
+	a.http.Debug = false
 	//a.http.Use(middleware.Recover())
 	a.http.Use(a.log.EchoLogger("/api/v1/perf/metrics", "/api/v1/perf/logs"))
-
-	a.http.Any(KVPREFIX+"*", a.kvHandler, a.auth.Middleware)
+	// UI
+	fs := rice.MustFindBox("./ui/").HTTPBox()
+	a.http.GET("/", echo.WrapHandler(http.FileServer(fs)))
+	a.http.GET("/ui/*", echo.WrapHandler(http.StripPrefix("/ui/", http.FileServer(fs))))
+	a.http.Any("/api/v1/kv/", a.kvHandler)
+	a.http.Any("/api/v1/kv/*", a.kvHandler)
 	a.http.POST(APIPREFIX+"login", a.routeLogin)
-	a.http.Static(UIPREFIX+"*", "./ui/")
 	a.http.GET(APIPREFIX+"cluster/nodes", a.routeClusterNodes)
 	// PERF GROUP
 	perf := a.http.Group(APIPREFIX + "perf")
 	perf.GET("/logs", a.routeLogs)
 	perf.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 	perf.GET("/dashboard", a.routeDashboard)
-
-	a.http.HidePort = true
-	a.http.Debug = true
 	return a, nil
 }
 

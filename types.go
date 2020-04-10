@@ -67,6 +67,7 @@ type LoggerConfig struct {
 //SSLConfig holds the SSL configuration
 type SSLConfig struct {
 	Enable         bool   `yaml:"enable"`
+	SSLPort        uint16 `yaml:"ssl_port"`
 	SSLCertificate string `yaml:"ssl_certificate"`
 	SSLKey         string `yaml:"ssl_key"`
 }
