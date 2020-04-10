@@ -7,9 +7,12 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/consul/api v1.4.0 // indirect
 	github.com/labstack/echo v3.3.10+incompatible
-	github.com/labstack/echo/v4 v4.1.16 // indirect
+	github.com/labstack/echo-contrib v0.9.0
+	github.com/labstack/echo/v4 v4.1.16
 	github.com/perlin-network/noise v1.1.3
 	github.com/pkg/profile v1.4.0
+	github.com/prometheus/client_golang v1.5.1
+	github.com/shirou/gopsutil v2.20.3+incompatible
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.2
 	go.etcd.io/bbolt v1.3.2

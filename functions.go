@@ -44,7 +44,9 @@ func getConfig() (*Config, error) {
 			SSLKey:         "my.key",
 		},
 		Perf: PerfConfig{
-			BufferSize: 4096,
+			EnableMetrics:  true,
+			EnableHTTPLogs: true,
+			BufferSize:     4096,
 		},
 	}
 	v := viper.New()
@@ -98,6 +100,8 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs.Bool("ssl.enable", true, "Enable SSL for the REST API and embedded web UI")
 	fs.String("ssl.certificate", "my.crt", "Path to the SSL certificate to use")
 	fs.String("ssl.key", "my.key", "Path to the SSL private key to use")
+	fs.Bool("performance.enablemetrics", true, "Enable Prometheus metrics endpoint and collection")
+	fs.Bool("performance.enablehttplogs", true, "Enable an HTTP endpoint for getting logs")
 	fs.Uint64("performance.buffersize", 4096, "Internal buffer size")
 	fs.String("auth.provider", "token", "Authentication method selection (token, basic, none)")
 	err := fs.Parse(os.Args[1:])

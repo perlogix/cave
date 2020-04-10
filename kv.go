@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.etcd.io/bbolt"
 )
 
@@ -24,6 +26,7 @@ type KV struct {
 	options   *bbolt.Options
 	crypto    *Crypto
 	sharedkey *AESKey
+	metrics   map[string]interface{}
 }
 
 // KVUpdate type
@@ -46,7 +49,10 @@ func newKV(app *Bunker) (*KV, error) {
 		log:       app.Logger,
 		dbPath:    app.Config.KV.DBPath,
 		crypto:    app.Crypto,
+		metrics:   kvmetrics(),
 	}
+	start := time.Now()
+	defer kv.doMetrics("startup", start)
 	kv.options = &bbolt.Options{
 		Timeout:      30 * time.Second,
 		FreelistType: "hashmap",
@@ -73,6 +79,47 @@ func newKV(app *Bunker) (*KV, error) {
 	}
 	kv.sharedkey = key
 	return kv, nil
+}
+
+func kvmetrics() map[string]interface{} {
+	return map[string]interface{}{
+		"pagefree": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_kv_db_freelist_pages_free",
+			Help: "Total number of free pages on the freelist",
+		}),
+		"pagepending": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_kv_db_freelist_pages_pending",
+			Help: "Total number of pending pages on the freelist",
+		}),
+		"pagealloc": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_kv_db_freelist_bytes_total",
+			Help: "Total bytes allocted in free pages",
+		}),
+		"pageuse": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_kv_db_freelist_bytes_used",
+			Help: "Total bytes used in the freelist",
+		}),
+		"tx_tot": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_kv_db_tx_count",
+			Help: "Total number of started read transactions",
+		}),
+		"tx_open": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_kv_db_tx_open",
+			Help: "Number of currently open read transactions",
+		}),
+		"transaction_time": promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bunker_kv_transaction_time_ms",
+			Help: "Duration of transactions by type",
+		}, []string{"type"}),
+		"dbsize": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_kv_size_bytes",
+			Help: "Size in bytes of the database on disk",
+		}),
+		"kv_q": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_kv_update_queue_size",
+			Help: "Length of the KV update queue",
+		}),
+	}
 }
 
 func dbOpen(path string, options *bbolt.Options) (*bbolt.DB, error) {
@@ -105,6 +152,7 @@ func dbClose(db *bbolt.DB) error {
 // Start func
 func (kv *KV) Start() {
 	for {
+		go kv.metrics["kv_q"].(prometheus.Gauge).Set(float64(len(kv.updates)))
 		select {
 		case <-kv.terminate:
 			return
@@ -120,7 +168,8 @@ func (kv *KV) Start() {
 }
 
 func (kv *KV) handleUpdate(msg Message) error {
-	kv.log.Debug("GOT EVENT")
+	start := time.Now()
+	defer kv.doMetrics("handle:update", start)
 	var kvu KVUpdate
 	err := json.Unmarshal(msg.Data, &kvu)
 	if err != nil {
@@ -160,6 +209,8 @@ func (kv *KV) handleEvent(msg Message) error {
 }
 
 func (kv *KV) emitEvent(t string, key string, value []byte) error {
+	start := time.Now()
+	defer kv.doMetrics("emit:event", start)
 	k := KVUpdate{
 		UpdateType: t,
 		Key:        key,
@@ -186,7 +237,25 @@ func parsePath(path string) (buckets []string, key string) {
 	return paths[:len(paths)-1], last
 }
 
+func (kv *KV) doMetrics(tx string, start time.Time) {
+	go func() {
+		diff := time.Now().Sub(start)
+		kv.metrics["transaction_time"].(*prometheus.GaugeVec).WithLabelValues(tx).Set(float64(diff.Milliseconds()))
+		stats := kv.db.Stats()
+		kv.metrics["pagefree"].(prometheus.Gauge).Set(float64(stats.FreePageN))
+		kv.metrics["pagepending"].(prometheus.Gauge).Set(float64(stats.PendingPageN))
+		kv.metrics["pagealloc"].(prometheus.Gauge).Set(float64(stats.FreeAlloc))
+		kv.metrics["pageuse"].(prometheus.Gauge).Set(float64(stats.FreelistInuse))
+		kv.metrics["tx_tot"].(prometheus.Gauge).Set(float64(stats.TxN))
+		kv.metrics["tx_open"].(prometheus.Gauge).Set(float64(stats.OpenTxN))
+		f, _ := os.Stat(kv.config.KV.DBPath)
+		kv.metrics["dbsize"].(prometheus.Gauge).Set(float64(f.Size()))
+	}()
+}
+
 func (kv *KV) getBuckets(tx *bbolt.Tx, buckets []string, prefix string, create bool) (*bbolt.Bucket, string, error) {
+	start := time.Now()
+	defer kv.doMetrics("get:buckets", start)
 	var bkt *bbolt.Bucket
 	var name string
 	name = prefix
@@ -214,6 +283,8 @@ func (kv *KV) getBuckets(tx *bbolt.Tx, buckets []string, prefix string, create b
 
 // Put value
 func (kv *KV) Put(key string, value []byte, prefix string, e ...bool) error {
+	start := time.Now()
+	defer kv.doMetrics("put:key", start)
 	emit := true
 	if len(e) > 0 {
 		emit = e[0]
@@ -244,6 +315,8 @@ func (kv *KV) Put(key string, value []byte, prefix string, e ...bool) error {
 
 // Get function
 func (kv *KV) Get(key string, prefix string) ([]byte, error) {
+	start := time.Now()
+	defer kv.doMetrics("get:key", start)
 	buckets, k := parsePath(key)
 	obj := []byte{}
 	err := kv.db.View(func(tx *bbolt.Tx) error {
@@ -260,6 +333,8 @@ func (kv *KV) Get(key string, prefix string) ([]byte, error) {
 
 // GetKeys gets keys from a bucket
 func (kv *KV) GetKeys(key string, prefix string) ([]string, error) {
+	start := time.Now()
+	defer kv.doMetrics("get:keys", start)
 	buckets, k := parsePath(key)
 	var keys []string
 	err := kv.db.View(func(tx *bbolt.Tx) error {
@@ -291,6 +366,8 @@ func (kv *KV) GetKeys(key string, prefix string) ([]string, error) {
 
 // DeleteKey function
 func (kv *KV) DeleteKey(key string, prefix string, e ...bool) error {
+	start := time.Now()
+	defer kv.doMetrics("delete:key", start)
 	emit := true
 	if len(e) > 0 {
 		emit = e[0]
@@ -318,6 +395,8 @@ func (kv *KV) DeleteKey(key string, prefix string, e ...bool) error {
 
 // DeleteBucket function
 func (kv *KV) DeleteBucket(key string, prefix string, e ...bool) error {
+	start := time.Now()
+	defer kv.doMetrics("delete:bucket", start)
 	emit := true
 	if len(e) > 0 {
 		emit = e[0]
@@ -346,6 +425,8 @@ func (kv *KV) DeleteBucket(key string, prefix string, e ...bool) error {
 // GetTree gets the db tree from the specified root to n-depth.
 // If root is not given, it returns the entire db tree.
 func (kv *KV) GetTree(prefix string, root ...string) (map[string]interface{}, error) {
+	start := time.Now()
+	defer kv.doMetrics("get:tree", start)
 	startPath := ""
 	if len(root) > 0 {
 		startPath = root[0]

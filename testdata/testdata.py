@@ -6,11 +6,11 @@ import string
 import random
 import sys
 
-URL = "http://localhost:9000/api/v1/kv/"
+URL = "http://{}/api/v1/kv/".format(sys.argv[1])
 
 data = {}
 iterations = 0
-while iterations <= 0:
+while iterations <= 10:
     with open('data.json', 'r') as f:
         data = json.loads(f.readline())
         while data:

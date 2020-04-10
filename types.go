@@ -73,7 +73,9 @@ type SSLConfig struct {
 
 //PerfConfig holds performance configs
 type PerfConfig struct {
-	BufferSize uint64 `yaml:"buffer_size"`
+	EnableMetrics  bool   `yaml:"enable_metrics"`
+	EnableHTTPLogs bool   `yaml:"enable_http_logs"`
+	BufferSize     uint64 `yaml:"buffer_size"`
 }
 
 // AuthConfig type

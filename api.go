@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.etcd.io/bbolt"
 )
 
@@ -55,12 +56,17 @@ func NewAPI(app *Bunker) (*API, error) {
 	a.http = echo.New()
 	a.http.HideBanner = true
 	//a.http.Use(middleware.Recover())
-	a.http.Use(a.log.EchoLogger())
+	a.http.Use(a.log.EchoLogger("/api/v1/perf/metrics", "/api/v1/perf/logs"))
 
 	a.http.Any(KVPREFIX+"*", a.kvHandler, a.auth.Middleware)
 	a.http.POST(APIPREFIX+"login", a.routeLogin)
 	a.http.Static(UIPREFIX+"*", "./ui/")
 	a.http.GET(APIPREFIX+"cluster/nodes", a.routeClusterNodes)
+	// PERF GROUP
+	perf := a.http.Group(APIPREFIX + "perf")
+	perf.GET("/logs", a.routeLogs)
+	perf.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
+	perf.GET("/dashboard", a.routeDashboard)
 
 	a.http.HidePort = true
 	a.http.Debug = true
@@ -98,6 +104,10 @@ func (a *API) watch() {
 
 func (a *API) routeLogin(c echo.Context) error {
 	return c.JSON(200, map[string]string{"message": "ok"})
+}
+
+func trimPath(path string, prefix string) string {
+	return path[len(prefix):]
 }
 
 func (a *API) kvHandler(c echo.Context) error {
@@ -213,6 +223,19 @@ func (a *API) routeClusterNodes(c echo.Context) error {
 	return c.JSON(200, m)
 }
 
-func trimPath(path string, prefix string) string {
-	return path[len(prefix):]
+func (a *API) routeLogs(c echo.Context) error {
+	logs := []string{}
+	for i := 0; i <= 100; i++ {
+		select {
+		case m := <-a.log.logQueue:
+			logs = append(logs, m)
+		default:
+			break
+		}
+	}
+	return c.JSON(200, logs)
+}
+
+func (a *API) routeDashboard(c echo.Context) error {
+	return c.Blob(200, "application/json", getDashboard())
 }

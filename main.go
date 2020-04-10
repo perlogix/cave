@@ -37,6 +37,7 @@ func main() {
 	TERMINATOR = map[string]chan bool{}
 	kill := make(chan os.Signal)
 	signal.Notify(kill, syscall.SIGKILL, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
+	go mainMetrics()
 	CONFIG, err := getConfig()
 	if err != nil {
 		panic(err)

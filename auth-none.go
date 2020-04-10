@@ -1,6 +1,6 @@
 package main
 
-import "github.com/labstack/echo"
+import "github.com/labstack/echo/v4"
 
 //NoAuth type is no auth
 type NoAuth struct{}

@@ -29,6 +29,8 @@ ssl:
     ssl_key: my.key
 
 performance:
+    enable_metrics: true
+    enable_http_logs: true
     buffer_size: 4096
 
 auth:

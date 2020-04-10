@@ -15,6 +15,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/perlin-network/noise"
 	"github.com/perlin-network/noise/kademlia"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 //Cluster type
@@ -31,6 +33,7 @@ type Cluster struct {
 	log           *Log
 	locationTable []node
 	genRSA        bool
+	metrics       map[string]interface{}
 }
 
 func newCluster(app *Bunker) (*Cluster, error) {
@@ -42,6 +45,7 @@ func newCluster(app *Bunker) (*Cluster, error) {
 		terminate: make(chan bool),
 		synced:    make(chan bool),
 		genRSA:    false,
+		metrics:   metrics(),
 	}
 	if c.config.Mode == "dev" {
 		return c, nil
@@ -62,6 +66,44 @@ func newCluster(app *Bunker) (*Cluster, error) {
 	return c, nil
 }
 
+func metrics() map[string]interface{} {
+	m := map[string]interface{}{
+		"peers": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_cluster_network_size",
+			Help: "The size of the peer network",
+		}),
+		"peerlatency": promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bunker_cluster_peer_latency",
+			Help: "Latencies in ms from this node to its peers",
+		}, []string{"peer"}),
+		"messages_rx": promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "bunker_cluster_messages_rx",
+			Help: "Number of cluster messages recieved by type",
+		}, []string{"operation", "type"}),
+		"messages_tx": promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "bunker_cluster_messages_tx",
+			Help: "Number of cluster messages sent by type",
+		}, []string{"operation", "type"}),
+		"sync_tx": promauto.NewCounter(prometheus.CounterOpts{
+			Name: "bunker_cluster_sync_tx_bytes",
+			Help: "Number of bytes transmitted in sync operations",
+		}),
+		"sync_rx": promauto.NewCounter(prometheus.CounterOpts{
+			Name: "bunker_cluster_sync_rx_bytes",
+			Help: "Number of bytes recieved in sync operations",
+		}),
+		"in": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_cluster_connections_inbound",
+			Help: "Number of inbound cluster connections",
+		}),
+		"out": promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "bunker_cluster_connections_outbound",
+			Help: "Number of outbound cluster connections",
+		}),
+	}
+	return m
+}
+
 func (c *Cluster) registerHandlers(updates chan Message, sync chan Message) error {
 	if c.config.Mode == "dev" {
 		return nil
@@ -75,10 +117,10 @@ func (c *Cluster) registerHandlers(updates chan Message, sync chan Message) erro
 		if err != nil {
 			return err
 		}
+		go c.metrics["messages_rx"].(*prometheus.CounterVec).WithLabelValues(msg.Type, msg.DataType).Inc()
 		switch msg.Type {
 		case "update":
 			updates <- msg
-			fmt.Printf("UPDATES: %v\n", len(updates))
 		case "sync":
 			if msg.DataType == "sync:request" {
 				go func() {
@@ -155,6 +197,11 @@ func (c *Cluster) Start(clusterReady chan bool) {
 		default:
 			//c.log.Debug("Discovering network")
 			c.peers = c.network.Discover()
+			go func() {
+				c.metrics["peers"].(prometheus.Gauge).Set(float64(len(c.peers) + 1))
+				c.metrics["in"].(prometheus.Gauge).Set(float64(len(c.node.Inbound())))
+				c.metrics["out"].(prometheus.Gauge).Set(float64(len(c.node.Outbound())))
+			}()
 			if index == 60 || index == 0 { // every 30 seconds or so
 				ltab := []node{}
 				for _, p := range c.peers {
@@ -172,6 +219,7 @@ func (c *Cluster) Start(clusterReady chan bool) {
 						Address:  p.Address,
 						Distance: diff,
 					})
+					go c.metrics["peerlatency"].(*prometheus.GaugeVec).WithLabelValues(p.Address).Set(float64(diff.Milliseconds()))
 					cancel()
 				}
 				c.locationTable = ltab
@@ -213,6 +261,7 @@ func (c *Cluster) Emit(typ string, data []byte, dtype string) error {
 		ID:       id.String(),
 		Origin:   c.node.Addr(),
 	}
+	go c.metrics["messages_tx"].(*prometheus.CounterVec).WithLabelValues(msg.Type, msg.DataType).Inc()
 	msg.Epoch = c.epoch + 1
 	b, err := json.Marshal(msg)
 	if err != nil {
@@ -260,6 +309,7 @@ func (c *Cluster) SyncResponse(msg Message) error {
 	if err != nil {
 		return err
 	}
+	go c.metrics["sync_tx"].(prometheus.Counter).Add(float64(b))
 	conn.Close()
 	c.log.DebugF("Wrote %v bytes to sync operations", b)
 	return nil
@@ -268,7 +318,7 @@ func (c *Cluster) SyncResponse(msg Message) error {
 // SyncRequest emits a sync request to the nearest neighbor
 // nearest is determined by the locationTable
 func (c *Cluster) SyncRequest(clusterReady chan bool) error {
-	c.log.Debug("New SYNC request")
+	c.log.Debug("New sync request")
 	if c.config.Mode == "dev" {
 		return nil
 	}
@@ -288,6 +338,7 @@ func (c *Cluster) SyncRequest(clusterReady chan bool) error {
 		ID:       id.String(),
 		Origin:   c.node.Addr(),
 	}
+	go c.metrics["messages_tx"].(*prometheus.CounterVec).WithLabelValues(res.Type, res.DataType).Inc()
 	b, err := json.Marshal(res)
 	if err != nil {
 		return err
@@ -297,7 +348,6 @@ func (c *Cluster) SyncRequest(clusterReady chan bool) error {
 	if err != nil {
 		return err
 	}
-	c.log.Debug("SYNC READY")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if len(c.locationTable) > 1 {
@@ -335,14 +385,13 @@ func (c *Cluster) SyncHandle(addr string, ready chan error, clusterReady chan bo
 		c.log.Error(err)
 		return
 	}
-
-	c.log.Debug("Ready for SYNC")
 	var buf bytes.Buffer
 	n1, err := io.Copy(&buf, conn)
 	if err != nil {
 		c.log.Error(err)
 		return
 	}
+	go c.metrics["sync_rx"].(prometheus.Counter).Add(float64(n1))
 	c.log.DebugF("Got %v bytes in sync operation", n1)
 	conn.Close()
 	if c.app.KVInit {
@@ -352,7 +401,6 @@ func (c *Cluster) SyncHandle(addr string, ready chan error, clusterReady chan bo
 			return
 		}
 	}
-	c.log.Debug("Writing DB file")
 	db, err := os.OpenFile(c.config.KV.DBPath, os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		c.log.Error(err)
@@ -370,7 +418,6 @@ func (c *Cluster) SyncHandle(addr string, ready chan error, clusterReady chan bo
 		return
 	}
 	c.log.DebugF("Copied %v bytes from tmp to db file", n2)
-	c.log.Debug("Finished writing DB file")
 	if n1 != n2 {
 		c.log.ErrorF("Got %v from sync but only wrote %v bytes to db", n1, n2)
 		return
@@ -404,6 +451,7 @@ func (c *Cluster) RequestSharedKey() error {
 		ID:       id.String(),
 		Origin:   c.node.Addr(),
 	}
+	go c.metrics["messages_tx"].(*prometheus.CounterVec).WithLabelValues(res.Type, res.DataType).Inc()
 	b, err := json.Marshal(res)
 	if err != nil {
 		return err
@@ -441,6 +489,7 @@ func (c *Cluster) SendSharedKey(msg Message) error {
 		ID:       id.String(),
 		Origin:   c.node.Addr(),
 	}
+	go c.metrics["messages_tx"].(*prometheus.CounterVec).WithLabelValues(res.Type, res.DataType).Inc()
 	b, err := json.Marshal(res)
 	if err != nil {
 		return err
