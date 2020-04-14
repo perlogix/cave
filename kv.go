@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/denisbrodbeck/machineid"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.etcd.io/bbolt"
@@ -31,18 +33,30 @@ type KV struct {
 
 // KVUpdate type
 type KVUpdate struct {
-	UpdateType string `json:"update_type"`
-	Key        string `json:"key"`
-	Value      []byte `json:"value"`
+	UpdateType string   `json:"update_type"`
+	Key        string   `json:"key"`
+	Value      KVObject `json:"value"`
 }
 
 ////////////////////////// IMPLEMENT ///////////////////////
 
 //KVObject struct
 type KVObject struct {
-	LastUpdated time.Time `json:"last_updated"`
-	Secret      bool      `json:"secret"`
-	Data        string    `json:"data"`
+	LastUpdated time.Time       `json:"last_updated"`
+	Secret      bool            `json:"secret"`
+	Data        json.RawMessage `json:"data"`
+	Locks       []Lock          `json:"locks"`
+}
+
+// Lock object
+type Lock struct {
+	Key         string    `json:"key"`
+	Prefix      string    `json:"prefix"`
+	LockID      string    `json:"lock_id"`
+	NodeID      string    `json:"node_id"`
+	NodeAddress string    `json:"node_address"`
+	ClaimTime   time.Time `json:"claim_time"`
+	ExpireTime  time.Time `json:"expire_time"`
 }
 
 ////////////////////////////////////////////////////////////
@@ -184,7 +198,7 @@ func (kv *KV) handleUpdate(msg Message) error {
 	}
 	switch kvu.UpdateType {
 	case "put:key":
-		err := kv.Put(kvu.Key, kvu.Value, "kv", false)
+		err := kv.PutObject(kvu.Key, kvu.Value, "kv", kvu.Value.Secret, false)
 		if err != nil {
 			return err
 		}
@@ -195,6 +209,21 @@ func (kv *KV) handleUpdate(msg Message) error {
 		}
 	case "delete:bucket":
 		err := kv.DeleteBucket(kvu.Key, "kv", false)
+		if err != nil {
+			return err
+		}
+	case "lock:create":
+		_, err := kv.Lock(kvu.Key, "kv", false)
+		if err != nil {
+			return err
+		}
+	case "lock:delete":
+		var l Lock
+		err = json.Unmarshal(kvu.Value.Data, &l)
+		if err != nil {
+			return err
+		}
+		err = kv.Unlock(l, false)
 		if err != nil {
 			return err
 		}
@@ -215,7 +244,7 @@ func (kv *KV) handleEvent(msg Message) error {
 	return nil
 }
 
-func (kv *KV) emitEvent(t string, key string, value []byte) error {
+func (kv *KV) emitEvent(t string, key string, value KVObject) error {
 	start := time.Now()
 	defer kv.doMetrics("emit:event", start)
 	k := KVUpdate{
@@ -288,8 +317,18 @@ func (kv *KV) getBuckets(tx *bbolt.Tx, buckets []string, prefix string, create b
 	return bkt, name, nil
 }
 
-// Put value
-func (kv *KV) Put(key string, value []byte, prefix string, e ...bool) error {
+//Put function
+func (kv *KV) Put(key string, value []byte, prefix string, secret bool, e ...bool) error {
+	return kv.PutObject(key, KVObject{
+		LastUpdated: time.Now(),
+		Secret:      secret,
+		Data:        json.RawMessage(value),
+		Locks:       []Lock{},
+	}, prefix, secret, e...)
+}
+
+// PutObject value
+func (kv *KV) PutObject(key string, value KVObject, prefix string, secret bool, e ...bool) error {
 	start := time.Now()
 	defer kv.doMetrics("put:key", start)
 	emit := true
@@ -297,12 +336,16 @@ func (kv *KV) Put(key string, value []byte, prefix string, e ...bool) error {
 		emit = e[0]
 	}
 	buckets, k := parsePath(key)
-	err := kv.db.Update(func(tx *bbolt.Tx) error {
+	bobj, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	err = kv.db.Update(func(tx *bbolt.Tx) error {
 		b, _, err := kv.getBuckets(tx, buckets, prefix, true)
 		if err != nil {
 			return err
 		}
-		err = b.Put([]byte(k), value)
+		err = b.Put([]byte(k), bobj)
 		if err != nil {
 			return err
 		}
@@ -322,20 +365,32 @@ func (kv *KV) Put(key string, value []byte, prefix string, e ...bool) error {
 
 // Get function
 func (kv *KV) Get(key string, prefix string) ([]byte, error) {
+	o, err := kv.GetObject(key, prefix)
+	if err != nil {
+		return nil, err
+	}
+	return o.Data, nil
+}
+
+// GetObject function
+func (kv *KV) GetObject(key string, prefix string) (KVObject, error) {
 	start := time.Now()
 	defer kv.doMetrics("get:key", start)
 	buckets, k := parsePath(key)
-	obj := []byte{}
+	bobj := []byte{}
 	err := kv.db.View(func(tx *bbolt.Tx) error {
 		b, _, err := kv.getBuckets(tx, buckets, prefix, false)
 		if err != nil {
 			return err
 		}
 		v := b.Get([]byte(k))
-		obj = v
+		bobj = v
 		return nil
 	})
+	var obj KVObject
+	err = json.Unmarshal(bobj, &obj)
 	return obj, err
+
 }
 
 // GetKeys gets keys from a bucket
@@ -392,7 +447,7 @@ func (kv *KV) DeleteKey(key string, prefix string, e ...bool) error {
 		return nil
 	})
 	if emit {
-		err = kv.emitEvent("delete:key", key, []byte{})
+		err = kv.emitEvent("delete:key", key, KVObject{})
 		if err != nil {
 			return err
 		}
@@ -421,7 +476,7 @@ func (kv *KV) DeleteBucket(key string, prefix string, e ...bool) error {
 		return nil
 	})
 	if emit {
-		err = kv.emitEvent("delete:bucket", key, []byte{})
+		err = kv.emitEvent("delete:bucket", key, KVObject{})
 		if err != nil {
 			return err
 		}
@@ -470,4 +525,53 @@ func enumerateBucket(bkt *bbolt.Bucket) map[string]interface{} {
 		}
 	}
 	return tree
+}
+
+// Lock function
+func (kv *KV) Lock(key string, prefix string, e ...bool) (Lock, error) {
+	start := time.Now()
+	defer kv.doMetrics("lock:create", start)
+	id, err := machineid.ID()
+	l := Lock{
+		Key:         key,
+		Prefix:      prefix,
+		LockID:      uuid.New().String(),
+		NodeID:      id,
+		NodeAddress: kv.app.Cluster.node.Addr(),
+		ClaimTime:   time.Now(),
+		ExpireTime:  time.Now().Add(5 * time.Minute),
+	}
+	obj, err := kv.GetObject(key, prefix)
+	if err != nil {
+		return l, err
+	}
+	obj.Locks = append(obj.Locks, l)
+	err = kv.PutObject(key, obj, prefix, obj.Secret, true)
+	if err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
+// Unlock function
+func (kv *KV) Unlock(lock Lock, e ...bool) error {
+	start := time.Now()
+	defer kv.doMetrics("lock:delete", start)
+	obj, err := kv.GetObject(lock.Key, lock.Prefix)
+	if err != nil {
+		return err
+	}
+	index := -1
+	for idx, l := range obj.Locks {
+		if l.LockID == lock.LockID {
+			index = idx
+			break
+		}
+	}
+	obj.Locks = append(obj.Locks[:index], obj.Locks[index+1:]...)
+	err = kv.PutObject(lock.Key, obj, lock.Prefix, obj.Secret, true)
+	if err != nil {
+		return err
+	}
+	return nil
 }

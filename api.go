@@ -179,14 +179,16 @@ func (a *API) kvPutHandler(c echo.Context) error {
 		a.log.Error(err)
 		return c.JSON(400, jsonError{Message: err.Error()})
 	}
+	secret := false
 	if c.Request().URL.Query().Get("secret") != "" {
+		secret = true
 		data, err := encrytJSON(a.kv.sharedkey, buf)
 		if err != nil {
 			return c.JSON(400, jsonError{Message: err.Error()})
 		}
 		buf = data
 	}
-	err = a.kv.Put(path, buf, "kv")
+	err = a.kv.Put(path, buf, "kv", secret)
 	if err != nil {
 		a.log.Error(err)
 		return c.JSON(500, jsonError{Message: err.Error()})
