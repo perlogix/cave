@@ -7,6 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/process"
 )
 
@@ -109,6 +110,10 @@ func mainMetrics() {
 			Name: "bunker_process_open_files_count",
 			Help: "Number of open files assocaited with the process",
 		}),
+		"load": promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bunker_host_cpu_load",
+			Help: "Load statistics for the host",
+		}, []string{"interval"}),
 	}
 	// IMPLEMENT!
 
@@ -129,10 +134,8 @@ func mainMetrics() {
 		m["heap_objects"].(prometheus.Gauge).Set(float64(memstats.HeapObjects))
 		m["gc_num"].(prometheus.Gauge).Set(float64(memstats.NumGC))
 		m["gc_pause"].(prometheus.Gauge).Set(float64(pausems.Milliseconds()))
-
 		p, err := process.NewProcess(int32(os.Getpid()))
 		if err != nil {
-
 			continue
 		}
 		cpu, err := p.CPUPercent()
@@ -172,6 +175,11 @@ func mainMetrics() {
 		fls, err := p.OpenFiles()
 		check(err)
 		m["proc_files"].(prometheus.Gauge).Set(float64(len(fls)))
+		ld, err := load.Avg()
+		check(err)
+		m["load"].(*prometheus.GaugeVec).WithLabelValues("1").Set(ld.Load1)
+		m["load"].(*prometheus.GaugeVec).WithLabelValues("5").Set(ld.Load5)
+		m["load"].(*prometheus.GaugeVec).WithLabelValues("15").Set(ld.Load15)
 		time.Sleep(2 * time.Second)
 	}
 

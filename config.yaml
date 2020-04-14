@@ -14,7 +14,7 @@ kv:
 
 api:
     enable: true
-    port: 80
+    port: 9000
     authentication: false
     enable_metrics: true
 
@@ -25,9 +25,8 @@ ui:
 
 ssl:
     enable: false
-    ssl_port: 443
-    ssl_certificate: my.crt
-    ssl_key: my.key
+    certificate: ssl/bunker.crt
+    key: ssl/bunker.key
 
 performance:
     enable_metrics: true

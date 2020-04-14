@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"os"
 
@@ -18,9 +19,9 @@ func getConfig() (*Config, error) {
 	c := &Config{
 		Mode: "dev",
 		Cluster: ClusterConfig{
-			BindPort:      2000,
+			Port:          2000,
+			Host:          "",
 			DiscoveryHost: "127.0.0.1:2000",
-			AdvertiseHost: "127.0.0.1:2000",
 			SyncPort:      1999,
 		},
 		KV: KVConfig{
@@ -39,10 +40,9 @@ func getConfig() (*Config, error) {
 			Authentication: true,
 		},
 		SSL: SSLConfig{
-			Enable:         true,
-			SSLPort:        443,
-			SSLCertificate: "my.crt",
-			SSLKey:         "my.key",
+			Enable:      true,
+			Certificate: "",
+			Key:         "",
 		},
 		Perf: PerfConfig{
 			EnableMetrics:  true,
@@ -73,10 +73,14 @@ func getConfig() (*Config, error) {
 	if err != nil {
 		return c, nil
 	}
+	if c.Cluster.Host == "" {
+		c.Cluster.Host = getIP("1.1.1.1:53")
+	}
 	if c.Mode != "prod" && c.Mode != "dev" {
 		os.Stderr.WriteString("'mode' must be set to either 'dev' or 'prod'; value '" + c.Mode + "' is not a valid mode.\n")
 		os.Exit(2)
 	}
+	fmt.Printf("%+v\n", c)
 	return c, nil
 }
 
@@ -85,9 +89,9 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs.SortFlags = true
 	fs.BoolP("help", "h", false, "Prints out this usage/help info")
 	fs.StringP("mode", "m", "dev", "Sets the operation mode: dev, prod")
-	fs.Uint16("cluster.bindport", 2000, "Port to bind to for listening for inbound cluster messages")
-	fs.String("cluster.discoveryhost", "127.0.0.1:2000", "Host/IP to announce its presnece to")
-	fs.String("cluster.advertisehost", "127.0.0.1:2000", "Host/IP to advertise when connecting to the cluster")
+	fs.Uint16("cluster.port", 2000, "Port to bind to for listening for inbound cluster messages")
+	fs.String("cluster.discoveryhost", "127.0.0.1:2000", "Host/IP to announce its presenece to")
+	fs.String("cluster.host", "", "Host/IP to advertise when connecting to the cluster")
 	fs.Uint16("cluster.syncport", 1999, "Port to send cluster sync data to")
 	fs.Bool("kv.encryption", true, "Enable encrypted values in the key-value store")
 	fs.String("kv.dbpath", "kv.db", "Path to save the key-value store if disk persistance is enable")
@@ -99,9 +103,8 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs.Uint16("ui.port", 443, "Port for the embedded web UI to listen on")
 	fs.Bool("ui.authentication", true, "Enable authentication for the embedded web UI")
 	fs.Bool("ssl.enable", true, "Enable SSL for the REST API and embedded web UI")
-	fs.Uint16("ssl.port", 443, "Port to serve SSL traffic on")
-	fs.String("ssl.certificate", "my.crt", "Path to the SSL certificate to use")
-	fs.String("ssl.key", "my.key", "Path to the SSL private key to use")
+	fs.String("ssl.certificate", "", "Path to the SSL certificate to use")
+	fs.String("ssl.key", "", "Path to the SSL private key to use")
 	fs.Bool("performance.enablemetrics", true, "Enable Prometheus metrics endpoint and collection")
 	fs.Bool("performance.enablehttplogs", true, "Enable an HTTP endpoint for getting logs")
 	fs.Uint64("performance.buffersize", 4096, "Internal buffer size")
@@ -127,6 +130,7 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 func getIP(addr string) string {
 	conn, err := net.Dial("udp", addr)
 	if err != nil {
+		fmt.Println(err)
 		return "127.0.0.1"
 	}
 	defer conn.Close()

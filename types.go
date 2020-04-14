@@ -33,9 +33,9 @@ type Bunker struct {
 
 //ClusterConfig type holds the cluster interface objects.
 type ClusterConfig struct {
-	BindPort      uint16 `yaml:"bind_port"`
+	Port          uint16 `yaml:"port"`
 	DiscoveryHost string `yaml:"discovery_host"`
-	AdvertiseHost string `yaml:"advertise_host"`
+	Host          string `yaml:"host"`
 	SyncPort      uint16 `yaml:"sync_port"`
 }
 
@@ -66,10 +66,9 @@ type LoggerConfig struct {
 
 //SSLConfig holds the SSL configuration
 type SSLConfig struct {
-	Enable         bool   `yaml:"enable"`
-	SSLPort        uint16 `yaml:"ssl_port"`
-	SSLCertificate string `yaml:"ssl_certificate"`
-	SSLKey         string `yaml:"ssl_key"`
+	Enable      bool   `yaml:"enable"`
+	Certificate string `yaml:"ssl_certificate"`
+	Key         string `yaml:"ssl_key"`
 }
 
 //PerfConfig holds performance configs

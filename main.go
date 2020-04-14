@@ -68,6 +68,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	go app.Cluster.Start(clusterReady)
 	log.Debug("START: Cluster")
 	log.Debug("Waiting on sync operation.")

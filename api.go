@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/shirou/gopsutil/host"
 	"go.etcd.io/bbolt"
 )
 
@@ -74,6 +76,10 @@ func NewAPI(app *Bunker) (*API, error) {
 	perf.GET("/logs", a.routeLogs)
 	perf.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 	perf.GET("/dashboard", a.routeDashboard)
+
+	system := a.http.Group("/api/v1/system")
+	system.GET("/config", a.routeSystemConfig)
+	system.GET("/info", a.routeSystemInfo)
 	return a, nil
 }
 
@@ -83,9 +89,12 @@ func (a *API) Start() {
 	scheme := "http://"
 	if a.config.SSL.Enable {
 		scheme = "https://"
+		a.log.InfoF("API listening on %s0.0.0.0:%v", scheme, a.config.API.Port)
+		a.log.Error(a.http.StartTLS(fmt.Sprintf("0.0.0.0:%v", a.config.API.Port), a.config.SSL.Certificate, a.config.SSL.Key))
+	} else {
+		a.log.InfoF("API listening on %s0.0.0.0:%v", scheme, a.config.API.Port)
+		a.log.Error(a.http.Start(fmt.Sprintf("0.0.0.0:%v", a.config.API.Port)))
 	}
-	a.log.InfoF("API listening on %s0.0.0.0:%v", scheme, a.config.API.Port)
-	a.http.Start(fmt.Sprintf("0.0.0.0:%v", a.config.API.Port))
 }
 
 func (a *API) watch() {
@@ -218,7 +227,7 @@ func (a *API) routeClusterNodes(c echo.Context) error {
 	if a.config.Mode == "dev" {
 		m := map[string]interface{}{}
 		m["mode"] = "dev"
-		m["nodes"] = append([]map[string]string{}, map[string]string{"Address": a.config.Cluster.AdvertiseHost, "public_key": ""})
+		m["nodes"] = append([]map[string]string{}, map[string]string{"Address": a.app.Cluster.advertiseHost, "public_key": ""})
 		return c.JSON(200, m)
 	}
 	m := map[string]interface{}{}
@@ -244,4 +253,21 @@ func (a *API) routeLogs(c echo.Context) error {
 
 func (a *API) routeDashboard(c echo.Context) error {
 	return c.Blob(200, "application/json", getDashboard())
+}
+
+func (a *API) routeSystemConfig(c echo.Context) error {
+	return c.JSON(200, a.app.Config)
+}
+
+func (a *API) routeSystemInfo(c echo.Context) error {
+	i := map[string]interface{}{}
+
+	info, err := host.Info()
+	if err != nil {
+		return c.JSON(500, err.Error)
+	}
+	i["os"] = info
+	i["env"] = os.Environ()
+
+	return c.JSON(200, i)
 }

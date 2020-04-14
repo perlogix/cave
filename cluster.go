@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
+	"log"
 	"os"
 	"sort"
 	"strings"
@@ -34,25 +35,27 @@ type Cluster struct {
 	locationTable []node
 	genRSA        bool
 	metrics       map[string]interface{}
+	advertiseHost string
 }
 
 func newCluster(app *Bunker) (*Cluster, error) {
 	config := app.Config
 	c := &Cluster{
-		app:       app,
-		config:    config,
-		log:       app.Logger,
-		terminate: make(chan bool),
-		synced:    make(chan bool),
-		genRSA:    false,
-		metrics:   metrics(),
+		app:           app,
+		config:        config,
+		log:           app.Logger,
+		terminate:     make(chan bool),
+		synced:        make(chan bool),
+		genRSA:        false,
+		metrics:       metrics(),
+		advertiseHost: fmt.Sprintf("%s:%v", config.Cluster.Host, config.Cluster.Port),
 	}
 	if c.config.Mode == "dev" {
 		return c, nil
 	}
 	node, err := noise.NewNode(
-		noise.WithNodeAddress(config.Cluster.AdvertiseHost),
-		noise.WithNodeBindPort(config.Cluster.BindPort),
+		noise.WithNodeAddress(c.advertiseHost),
+		noise.WithNodeBindPort(config.Cluster.Port),
 		noise.WithNodeIdleTimeout(300*time.Second),
 		noise.WithNodeMaxInboundConnections(4096),
 		noise.WithNodeMaxOutboundConnections(4096),
@@ -164,7 +167,7 @@ func (c *Cluster) Start(clusterReady chan bool) {
 	startup := true
 	firstNode := false
 	if err := c.node.Listen(); err != nil {
-		c.log.Fatal(err)
+		panic(err)
 	}
 	c.log.Debug("Start clustering")
 	peered := false
@@ -291,7 +294,7 @@ func (c *Cluster) SyncResponse(msg Message) error {
 		c.log.Warn("DB is empty, sending no data")
 		exist = false
 	}
-	conn, err := net.Dial("tcp", string(msg.Data))
+	conn, err := tls.Dial("tcp", string(msg.Data), &tls.Config{InsecureSkipVerify: true})
 	if err != nil {
 		return err
 	}
@@ -367,7 +370,14 @@ func (c *Cluster) SyncRequest(clusterReady chan bool) error {
 // writes the db to disk
 func (c *Cluster) SyncHandle(addr string, ready chan error, clusterReady chan bool) {
 	defer func() { clusterReady <- true }()
-	srv, err := net.Listen("tcp", fmt.Sprintf(":%v", c.config.Cluster.SyncPort))
+	cer, err := tls.LoadX509KeyPair(c.config.SSL.Certificate, c.config.SSL.Key)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	config := &tls.Config{Certificates: []tls.Certificate{cer}}
+	srv, err := tls.Listen("tcp", fmt.Sprintf(":%v", c.config.Cluster.SyncPort), config)
 	if err != nil {
 		ready <- err
 		return
