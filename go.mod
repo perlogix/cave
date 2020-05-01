@@ -1,4 +1,4 @@
-module gitlab.com/yeticloud/bunker
+module gitlab.com/yeticloud/cave
 
 go 1.13
 
@@ -6,6 +6,7 @@ require (
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
+	github.com/ethereum/go-ethereum v1.9.13
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/kr/pretty v0.2.0 // indirect
