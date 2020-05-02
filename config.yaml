@@ -6,6 +6,8 @@ cluster:
     bind_port: 2000
     discovery_host: 127.0.0.1:2000
     advertise_host: 127.0.0.1:2000
+    certificate: ssl/server.crt
+    certificate_key: ssl/server.key
 
 kv:
     enable_encryption: true

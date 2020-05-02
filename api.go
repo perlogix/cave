@@ -232,8 +232,7 @@ func (a *API) routeClusterNodes(c echo.Context) error {
 	}
 	m := map[string]interface{}{}
 	peers := a.app.Cluster.peers
-	self := a.app.Cluster.node.ID()
-	m["nodes"] = append(peers, self)
+	m["nodes"] = peers
 	m["mode"] = "cluster"
 	return c.JSON(200, m)
 }

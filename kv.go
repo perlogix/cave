@@ -171,65 +171,13 @@ func dbClose(db *bbolt.DB) error {
 }
 
 // Start func
-func (kv *KV) Start() {
-	for {
-		go kv.metrics["kv_q"].(prometheus.Gauge).Set(float64(len(kv.updates)))
-		select {
-		case <-kv.terminate:
-			return
-		case msg := <-kv.updates:
-			err := kv.handleUpdate(msg)
-			if err != nil {
-				kv.log.Error(err)
-			}
-		default:
-			time.Sleep(10 * time.Millisecond)
-		}
+func (kv *KV) Start() error {
+	if kv.config.Mode == "dev" {
+		return nil
 	}
-}
-
-func (kv *KV) handleUpdate(msg Message) error {
-	start := time.Now()
-	defer kv.doMetrics("handle:update", start)
-	var kvu KVUpdate
-	err := json.Unmarshal(msg.Data, &kvu)
+	err := kv.app.Cluster.network.RegisterService("kv", new(KVService))
 	if err != nil {
 		return err
-	}
-	switch kvu.UpdateType {
-	case "put:key":
-		err := kv.PutObject(kvu.Key, kvu.Value, "kv", kvu.Value.Secret, false)
-		if err != nil {
-			return err
-		}
-	case "delete:key":
-		err := kv.DeleteKey(kvu.Key, "kv", false)
-		if err != nil {
-			return err
-		}
-	case "delete:bucket":
-		err := kv.DeleteBucket(kvu.Key, "kv", false)
-		if err != nil {
-			return err
-		}
-	case "lock:create":
-		_, err := kv.Lock(kvu.Key, "kv", false)
-		if err != nil {
-			return err
-		}
-	case "lock:delete":
-		var l Lock
-		err = json.Unmarshal(kvu.Value.Data, &l)
-		if err != nil {
-			return err
-		}
-		err = kv.Unlock(l, false)
-		if err != nil {
-			return err
-		}
-	default:
-		kv.log.Error("UpdateType " + kvu.UpdateType + " not a valid type")
-		return nil
 	}
 	return nil
 }
@@ -245,6 +193,9 @@ func (kv *KV) handleEvent(msg Message) error {
 }
 
 func (kv *KV) emitEvent(t string, key string, value KVObject) error {
+	if kv.config.Mode == "dev" {
+		return nil
+	}
 	start := time.Now()
 	defer kv.doMetrics("emit:event", start)
 	k := KVUpdate{
@@ -256,9 +207,10 @@ func (kv *KV) emitEvent(t string, key string, value KVObject) error {
 	if err != nil {
 		return err
 	}
-	err = kv.app.Cluster.Emit("update", update, "KVUpdate")
-	if err != nil {
-		return err
+	errs := kv.app.Cluster.network.CallAll("kv_update", nil, update)
+	if len(errs) != 0 {
+		kv.log.Error("Errors sending updates", errs)
+		return fmt.Errorf("Errors sending updates")
 	}
 	return nil
 }
@@ -574,4 +526,95 @@ func (kv *KV) Unlock(lock Lock, e ...bool) error {
 		return err
 	}
 	return nil
+}
+
+//KVService struct
+type KVService struct {
+	kv *KV
+}
+
+// PutKey function
+func (k *KVService) PutKey(update KVUpdate) error {
+	err := k.kv.PutObject(update.Key, update.Value, "kv", update.Value.Secret, false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteKey func
+func (k *KVService) DeleteKey(update KVUpdate) error {
+	err := k.kv.DeleteKey(update.Key, "kv", false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteBucket func
+func (k *KVService) DeleteBucket(update KVUpdate) error {
+	err := k.kv.DeleteBucket(update.Key, "kv", false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// CreateLock func
+func (k *KVService) CreateLock(update KVUpdate) error {
+	_, err := k.kv.Lock(update.Key, "kv", false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteLock func
+func (k *KVService) DeleteLock(update KVUpdate) error {
+	var l Lock
+	err := json.Unmarshal(update.Value.Data, &l)
+	if err != nil {
+		return err
+	}
+	err = k.kv.Unlock(l, false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// SyncAll function
+func (k *KVService) SyncAll() (map[string]json.RawMessage, error) {
+	db := map[string]json.RawMessage{}
+	err := k.kv.db.View(func(tx *bbolt.Tx) error {
+		b, _, err := k.kv.getBuckets(tx, []string{}, "kv", false)
+		if err != nil {
+			return err
+		}
+		db = listBucket(b, "/")
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	k.kv.log.Pretty(db)
+	return db, nil
+}
+
+func listBucket(bkt *bbolt.Bucket, path string) map[string]json.RawMessage {
+	c := bkt.Cursor()
+	db := map[string]json.RawMessage{}
+	for ea, v := c.First(); ea != nil; ea, v = c.Next() {
+		isBucket := bkt.Bucket(ea)
+		if isBucket != nil {
+			t := listBucket(isBucket, path+string(ea[:])+"/")
+			for k, v := range t {
+				db[k] = v
+			}
+		} else {
+			db[path+string(ea[:])] = json.RawMessage(v)
+		}
+
+	}
+	return db
 }

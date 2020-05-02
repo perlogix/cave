@@ -33,10 +33,13 @@ type Bunker struct {
 
 //ClusterConfig type holds the cluster interface objects.
 type ClusterConfig struct {
-	Port          uint16 `yaml:"port"`
-	DiscoveryHost string `yaml:"discovery_host"`
-	Host          string `yaml:"host"`
-	SyncPort      uint16 `yaml:"sync_port"`
+	Port            uint16 `yaml:"port"`
+	DiscoveryHost   string `yaml:"discovery_host"`
+	Host            string `yaml:"host"`
+	SyncPort        uint16 `yaml:"sync_port"`
+	Certificate     string `yaml:"certificate"`
+	CertificateKey  string `yaml:"certificate_key"`
+	IgnoreSSLErrors bool   `yaml:"ignore_ssl_errors"`
 }
 
 //KVConfig type holds the key-value engine objects.

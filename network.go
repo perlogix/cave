@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,12 +17,11 @@ import (
 
 // Network defines the DHT network
 type Network struct {
-	privateKey string
-	publicKey  string
-	Options    NetworkOptions
-	rpcServer  *rpc.Server
-	rpcClient  *rpc.Client
-	Node       *Node
+	app       *Bunker
+	Options   NetworkOptions
+	rpcServer *rpc.Server
+	rpcClient *rpc.Client
+	Node      *Node
 }
 
 // TCPNetwork type
@@ -32,10 +32,13 @@ type TCPNetwork struct {
 // NetworkOptions type
 type NetworkOptions struct {
 	AnnounceHost   string
-	Port           uint
+	Port           uint16
 	IP             string
 	MaxMessageSize uint64 // max size in bytes
-	LogFunc        func(string, interface{})
+	LogFunc        func(string, string)
+	App            *Bunker
+	Certificate    string
+	CertificateKey string
 }
 
 // Peer type
@@ -53,8 +56,8 @@ type ClusterMessage struct {
 	Body     json.RawMessage
 }
 
-// New func
-func New(opts NetworkOptions) (*Network, error) {
+// NewNetwork func
+func NewNetwork(app *Bunker, opts NetworkOptions) (*Network, error) {
 	id, err := machineid.ID()
 	if err != nil {
 		return nil, err
@@ -65,10 +68,12 @@ func New(opts NetworkOptions) (*Network, error) {
 		Distance: 0,
 	}
 	return &Network{
+		app:     app,
 		Options: opts,
 		Node: &Node{
-			lock: sync.Mutex{},
-			Self: self,
+			crypto: opts.App.Crypto,
+			lock:   sync.Mutex{},
+			Self:   self,
 			Peers: map[string]Peer{
 				id: self,
 			},
@@ -78,19 +83,32 @@ func New(opts NetworkOptions) (*Network, error) {
 
 //Start function
 func (n *Network) Start() error {
+	if n.app.Config.Mode == "dev" {
+		return nil
+	}
 	n.rpcServer = rpc.NewServer()
 	err := n.RegisterService("node", n.Node)
 	if err != nil {
 		return err
 	}
 	http.HandleFunc("/rpc", n.rpcServer.ServeHTTP)
-	err = http.ListenAndServeTLS(fmt.Sprintf("%s:%v", n.Options.IP, n.Options.Port), n.publicKey, n.privateKey, nil)
-	if err != nil {
-		return err
-	}
-	err = n.call(n.Options.AnnounceHost, "node_announce", &n.Node.Peers, nil)
-	if err != nil {
-		return err
+	go http.ListenAndServeTLS(fmt.Sprintf("%s:%v", n.Options.IP, n.Options.Port), n.Options.Certificate, n.Options.CertificateKey, nil)
+	i := 0
+	for i < 120 {
+		i++
+		var p map[string]Peer
+		err = n.CallOne(n.Options.AnnounceHost, "node_announce", &p, n.Node.Self)
+		if err != nil {
+			fmt.Println(err)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		for _, i := range p {
+
+			n.Node.Peers[i.ID] = i
+
+		}
+		break
 	}
 	go n.checkPeers()
 	return nil
@@ -99,11 +117,21 @@ func (n *Network) Start() error {
 func (n *Network) checkPeers() {
 	t := time.NewTicker(10 * time.Second)
 	for range t.C {
-		n.Node.lock.Lock()
+		fmt.Println("Starting peer checking")
+		err := n.syncPeers()
+		if len(err) != 0 {
+			for _, e := range err {
+				n.Options.LogFunc("error", e.Error())
+			}
+		}
+
 		nodes := n.Node.List()
-		n.Node.lock.Unlock()
+
 		var errs []error
 		for k, v := range nodes {
+			if k == n.Node.Self.ID {
+				continue
+			}
 			start := time.Now()
 			res := false
 			err := n.CallOne(v.Addr, "node_heartbeat", &res)
@@ -111,18 +139,47 @@ func (n *Network) checkPeers() {
 				errs = append(errs, err)
 			}
 			if res {
+				fmt.Printf("Peer %s OK", v.Addr)
 				r := v
 				r.Distance = time.Since(start).Nanoseconds()
-				n.Node.lock.Lock()
+
 				n.Node.Peers[k] = r
-				n.Node.lock.Unlock()
+
 			} else {
-				n.Node.lock.Lock()
+				fmt.Printf("Peer %s ERR", v.Addr)
+
 				delete(n.Node.Peers, k)
-				n.Node.lock.Unlock()
+
 			}
 		}
+		if len(errs) != 0 {
+			for _, e := range errs {
+				n.Options.LogFunc("error", e.Error())
+			}
+		}
+		n.app.Logger.Pretty(n.Node.Peers)
 	}
+}
+
+func (n *Network) syncPeers() []error {
+	fmt.Println("start peer sync")
+	newList := map[string]Peer{}
+	dest := []interface{}{}
+	err := n.CallQuorum("node_list", &dest)
+	if len(err) != 0 {
+		return err
+	}
+	fmt.Println(dest)
+	for _, l := range dest {
+		for _, p := range l.([]Peer) {
+			newList[p.ID] = p
+		}
+	}
+
+	n.Node.Peers = newList
+
+	n.app.Logger.Pretty(n.Node.Peers)
+	return []error{}
 }
 
 // RegisterService allows you to register a new service
@@ -132,13 +189,16 @@ func (n *Network) RegisterService(name string, svc interface{}) error {
 
 // CallOne calls the specified host
 func (n *Network) CallOne(host string, serviceName string, dest interface{}, args ...interface{}) error {
-	return n.call(host, serviceName, dest, args)
+	return n.call(host, serviceName, dest, args...)
 }
 
 // CallAny calls the closest node in the table
 func (n *Network) CallAny(serviceName string, dest interface{}, args ...interface{}) error {
 	p := n.getNearestNeighbor()
-	return n.call(p.Addr, serviceName, dest, args)
+	if p.Addr == "" {
+		return fmt.Errorf("No peers available")
+	}
+	return n.call(p.Addr, serviceName, dest, args...)
 }
 
 // CallQuorum calls 1/2n+1 nodes when len(nodes) < 5
@@ -166,7 +226,7 @@ func (n *Network) CallQuorum(serviceName string, dest *[]interface{}, args ...in
 	var dst []interface{}
 	for _, p := range sortedList {
 		var d interface{}
-		err := n.call(p.Addr, serviceName, &d, args)
+		err := n.call(p.Addr, serviceName, &d, args...)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -185,7 +245,7 @@ func (n *Network) CallAll(serviceName string, dest *[]interface{}, args ...inter
 			continue
 		}
 		var d interface{}
-		err := n.call(p.Addr, serviceName, &d, args)
+		err := n.call(p.Addr, serviceName, &d, args...)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -195,17 +255,27 @@ func (n *Network) CallAll(serviceName string, dest *[]interface{}, args ...inter
 	return nil
 }
 
-func (n *Network) call(host string, serviceName string, dest interface{}, args []interface{}) error {
+func (n *Network) call(host string, serviceName string, dest interface{}, args ...interface{}) error {
 	url := "https://" + host + "/rpc"
-	conn, err := rpc.DialHTTP(url)
+	fmt.Printf("Calling %s on %s with args %+v\n", serviceName, url, args)
+	hc := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: n.app.Config.Cluster.IgnoreSSLErrors,
+			},
+		},
+	}
+	conn, err := rpc.DialHTTPWithClient(url, hc)
 	if err != nil {
+		fmt.Println("Error with DIAL: ", err)
 		return err
 	}
 	defer conn.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	err = conn.CallContext(ctx, &dest, serviceName, args)
+	err = conn.CallContext(ctx, &dest, serviceName, args...)
 	if err != nil {
+		fmt.Println("Error with CALL: ", err)
 		return err
 	}
 	return nil
@@ -235,9 +305,10 @@ func (n *Network) getNearestNeighbor() Peer {
 
 // Node type
 type Node struct {
-	lock  sync.Mutex
-	Peers map[string]Peer
-	Self  Peer
+	lock   sync.Mutex
+	Peers  map[string]Peer
+	Self   Peer
+	crypto *Crypto
 }
 
 // List lists peers
@@ -259,4 +330,13 @@ func (n *Node) Announce(p Peer) map[string]Peer {
 	n.Peers[p.ID] = p
 	n.lock.Unlock()
 	return n.Peers
+}
+
+// GetSharedKey func
+func (n *Node) GetSharedKey() (*AESKey, error) {
+	key, err := n.crypto.UnsealSharedKey(n.crypto.privkey)
+	if err != nil {
+		return nil, err
+	}
+	return key, err
 }

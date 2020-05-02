@@ -17,12 +17,15 @@ func getConfig() (*Config, error) {
 		return &Config{}, err
 	}
 	c := &Config{
-		Mode: "dev",
+		Mode: "prod",
 		Cluster: ClusterConfig{
-			Port:          2000,
-			Host:          "",
-			DiscoveryHost: "127.0.0.1:2000",
-			SyncPort:      1999,
+			Port:            2000,
+			Host:            "",
+			DiscoveryHost:   "127.0.0.1:2000",
+			SyncPort:        1999,
+			Certificate:     "./ssl/server.crt",
+			CertificateKey:  "./ssl/server.key",
+			IgnoreSSLErrors: false,
 		},
 		KV: KVConfig{
 			Encryption: true,
@@ -88,11 +91,13 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs := pflag.NewFlagSet("Bunker", pflag.ExitOnError)
 	fs.SortFlags = true
 	fs.BoolP("help", "h", false, "Prints out this usage/help info")
-	fs.StringP("mode", "m", "dev", "Sets the operation mode: dev, prod")
+	fs.StringP("mode", "m", "prod", "Sets the operation mode: dev, prod")
 	fs.Uint16("cluster.port", 2000, "Port to bind to for listening for inbound cluster messages")
 	fs.String("cluster.discoveryhost", "127.0.0.1:2000", "Host/IP to announce its presenece to")
 	fs.String("cluster.host", "", "Host/IP to advertise when connecting to the cluster")
-	fs.Uint16("cluster.syncport", 1999, "Port to send cluster sync data to")
+	fs.String("cluster.certificate", "./ssl/server.crt", "Path to RPC server certificate")
+	fs.String("cluster.certificatekey", "./ssl/server.key", "Path to the certificate private key")
+	fs.Bool("cluster.ignoresslerrors", false, "Ignore SSL errors")
 	fs.Bool("kv.encryption", true, "Enable encrypted values in the key-value store")
 	fs.String("kv.dbpath", "kv.db", "Path to save the key-value store if disk persistance is enable")
 	fs.Bool("api.enable", true, "Enable the REST API")

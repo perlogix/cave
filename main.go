@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/signal"
 	"syscall"
@@ -62,13 +63,7 @@ func main() {
 	TERMINATOR["cluster"] = cluster.terminate
 	app.Cluster = cluster
 	app.updates = make(chan Message, 4096)
-	app.sync = make(chan Message, 4096)
 	clusterReady := make(chan bool)
-	err = app.Cluster.registerHandlers(app.updates, app.sync)
-	if err != nil {
-		panic(err)
-	}
-
 	go app.Cluster.Start(clusterReady)
 	log.Debug("START: Cluster")
 	log.Debug("Waiting on sync operation.")
@@ -83,6 +78,23 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+	} else {
+		var key *AESKey
+		err = app.Cluster.network.CallAny("node_getsharedkey", &key)
+		if err != nil {
+			panic(err)
+		}
+		app.Crypto.sharedkey = key
+		err = app.Crypto.SealSharedKey(key, app.Crypto.privkey, true)
+		if err != nil {
+			panic(err)
+		}
+		var db map[string]json.RawMessage
+		err = app.Cluster.network.CallAny("kv_syncall", &db)
+		if err != nil {
+			panic(err)
+		}
+		log.Pretty(db)
 	}
 	kv, err := newKV(app)
 	if err != nil {
@@ -91,7 +103,6 @@ func main() {
 	app.KVInit = true
 	app.KV = kv
 	TERMINATOR["kv"] = kv.terminate
-
 	auth, err := NewAuth(app)
 	if err != nil {
 		panic(err)
@@ -111,7 +122,7 @@ func main() {
 	log.Debug("START: API")
 	<-kill
 	log.Warn("Got kill signal from OS, shutting down...")
-	for _, t := range []string{"api", "auth", "kv", "cluster", "log"} {
+	for _, t := range []string{"api", "auth", "kv", "log"} {
 		log.Warn("Shutting down " + t)
 		TERMINATOR[t] <- true
 	}
