@@ -1,4 +1,4 @@
-module gitlab.com/yeticloud/cave
+module github.com/yeticloud/cave
 
 go 1.13
 
