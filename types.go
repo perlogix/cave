@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -16,8 +19,8 @@ type Config struct {
 	Auth    AuthConfig    `yaml:"auth"`
 }
 
-// Bunker struct wraps all the app functions
-type Bunker struct {
+// Cave struct wraps all the app functions
+type Cave struct {
 	Config    *Config
 	Logger    *Log
 	Cluster   *Cluster
@@ -26,6 +29,7 @@ type Bunker struct {
 	API       *API
 	Auth      *AuthService
 	Crypto    *Crypto
+	Plugins   *Plugins
 	updates   chan Message
 	sync      chan Message
 	sharedKey *AESKey
@@ -97,4 +101,23 @@ type node struct {
 	ID       string
 	Address  string
 	Distance time.Duration
+}
+
+// PluginConfig type
+type PluginConfig struct {
+	Name    string          `yaml:"name"`
+	ExeName string          `yaml:"exe_name"`
+	Type    string          `yaml:"type"` // authenticator, api, etc.
+	Env     []string        `yaml:"env"`
+	Config  json.RawMessage `yaml:"config"`
+}
+
+// APIRequest type
+type APIRequest struct {
+	URL       *url.URL
+	Body      []byte
+	Headers   http.Header
+	Host      string
+	UserAgent string
+	Cookies   []*http.Cookie
 }

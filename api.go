@@ -38,7 +38,7 @@ type jsonError struct {
 
 // API Type
 type API struct {
-	app       *Bunker
+	app       *Cave
 	config    *Config
 	log       *Log
 	terminate chan bool
@@ -48,7 +48,7 @@ type API struct {
 }
 
 //NewAPI function
-func NewAPI(app *Bunker) (*API, error) {
+func NewAPI(app *Cave) (*API, error) {
 	a := &API{
 		app:    app,
 		config: app.Config,
@@ -67,6 +67,7 @@ func NewAPI(app *Bunker) (*API, error) {
 	fs := rice.MustFindBox("./ui/").HTTPBox()
 	a.http.GET("/", echo.WrapHandler(http.FileServer(fs)))
 	a.http.GET("/ui/*", echo.WrapHandler(http.StripPrefix("/ui/", http.FileServer(fs))))
+	a.http.Any("/api/v1/plugin/*", a.PluginHandler)
 	a.http.Any("/api/v1/kv/", a.kvHandler)
 	a.http.Any("/api/v1/kv/*", a.kvHandler)
 	a.http.POST(APIPREFIX+"login", a.routeLogin)
@@ -134,6 +135,34 @@ func (a *API) kvHandler(c echo.Context) error {
 	default:
 		return c.JSON(405, jsonError{Message: "Method " + c.Request().Method + " is not allowed"})
 	}
+}
+
+// PluginHandler handles API plugins
+func (a *API) PluginHandler(c echo.Context) error {
+	path := trimPath(c.Request().URL.Path, "/api/v1/plugin/")
+	pathParts := strings.Split(path, "/")
+	if _, ok := a.app.Plugins.mgr.Procs["api"][pathParts[0]]; ok {
+		var dst interface{}
+		var b []byte
+		_, err := c.Request().Body.Read(b)
+		if err != nil {
+			return c.JSON(500, err)
+		}
+		req := &APIRequest{
+			URL:       c.Request().URL,
+			Body:      b,
+			Headers:   c.Request().Header,
+			Host:      c.Request().RemoteAddr,
+			UserAgent: c.Request().UserAgent(),
+			Cookies:   c.Request().Cookies(),
+		}
+		err = a.app.Plugins.mgr.Call("api:"+pathParts[0]+":http_"+strings.ToLower(c.Request().Method), &dst, req)
+		if err != nil {
+			return c.JSON(500, err)
+		}
+		c.JSON(200, dst)
+	}
+	return nil
 }
 
 func (a *API) treeHandler(c echo.Context, path string) error {

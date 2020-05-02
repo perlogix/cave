@@ -23,7 +23,7 @@ type Authenticator interface {
 }
 
 //NewAuth returns a new instance of the AuthService
-func NewAuth(app *Bunker) (*AuthService, error) {
+func NewAuth(app *Cave) (*AuthService, error) {
 	var provider Authenticator
 	var err error
 	switch app.Config.Auth.Provider {

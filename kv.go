@@ -16,7 +16,7 @@ import (
 
 // KV type
 type KV struct {
-	app       *Bunker
+	app       *Cave
 	terminate chan bool
 	config    *Config
 	events    chan Message
@@ -61,7 +61,7 @@ type Lock struct {
 
 ////////////////////////////////////////////////////////////
 
-func newKV(app *Bunker) (*KV, error) {
+func newKV(app *Cave) (*KV, error) {
 	kv := &KV{
 		app:       app,
 		terminate: make(chan bool),

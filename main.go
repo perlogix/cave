@@ -46,7 +46,7 @@ func main() {
 	TERMINATOR["log"] = log.terminator
 	go log.Start()
 	log.Debug("START: Logger")
-	app := &Bunker{
+	app := &Cave{
 		Config: CONFIG,
 		Logger: log,
 	}
@@ -84,6 +84,13 @@ func main() {
 			panic(err)
 		}
 	}
+	plugins, err := NewPlugins(app)
+	if err != nil {
+		panic(err)
+	}
+	app.Plugins = plugins
+	TERMINATOR["plugins"] = plugins.terminate
+	go app.Plugins.Start()
 	kv, err := newKV(app)
 	if err != nil {
 		panic(err)
@@ -91,7 +98,6 @@ func main() {
 	app.KVInit = true
 	app.KV = kv
 	TERMINATOR["kv"] = kv.terminate
-
 	auth, err := NewAuth(app)
 	if err != nil {
 		panic(err)
@@ -111,7 +117,7 @@ func main() {
 	log.Debug("START: API")
 	<-kill
 	log.Warn("Got kill signal from OS, shutting down...")
-	for _, t := range []string{"api", "auth", "kv", "cluster", "log"} {
+	for _, t := range []string{"api", "auth", "kv", "cluster", "log", "plugins"} {
 		log.Warn("Shutting down " + t)
 		TERMINATOR[t] <- true
 	}

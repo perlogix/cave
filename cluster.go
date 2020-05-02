@@ -22,7 +22,7 @@ import (
 
 //Cluster type
 type Cluster struct {
-	app           *Bunker
+	app           *Cave
 	terminate     chan bool
 	config        *Config
 	node          *noise.Node
@@ -38,7 +38,7 @@ type Cluster struct {
 	advertiseHost string
 }
 
-func newCluster(app *Bunker) (*Cluster, error) {
+func newCluster(app *Cave) (*Cluster, error) {
 	config := app.Config
 	c := &Cluster{
 		app:           app,

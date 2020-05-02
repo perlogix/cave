@@ -1,4 +1,4 @@
-module gitlab.com/yeticloud/bunker
+module gitlab.com/yeticloud/cave
 
 go 1.13
 
@@ -17,6 +17,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.5.1 // indirect
+	github.com/yeticloud/libsubrpc v0.0.0-20200502063156-18b3bc7732c2
 	go.etcd.io/bbolt v1.3.2
 	go.uber.org/zap v1.14.1 // indirect
 	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71 // indirect
