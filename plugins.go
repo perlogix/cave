@@ -96,9 +96,8 @@ func pluginList(path string) (map[string]PluginConfig, error) {
 		if _, err := os.Stat(path + "/" + c.ExeName); err == nil {
 			res[c.Name] = c
 		}
-		return res, nil
 	}
-
+	return res, nil
 }
 
 func pluginMetrics() map[string]interface{} {
