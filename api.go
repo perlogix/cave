@@ -145,8 +145,8 @@ func (a *API) PluginHandler(c echo.Context) error {
 		var dst interface{}
 		var b []byte
 		_, err := c.Request().Body.Read(b)
-		if err != nil {
-			return c.JSON(500, err)
+		if err != nil && err.Error() != "EOF" {
+			return c.JSON(500, map[string]interface{}{"error": err.Error})
 		}
 		req := &APIRequest{
 			URL:       c.Request().URL,
@@ -156,13 +156,17 @@ func (a *API) PluginHandler(c echo.Context) error {
 			UserAgent: c.Request().UserAgent(),
 			Cookies:   c.Request().Cookies(),
 		}
-		err = a.app.Plugins.mgr.Call("api:"+pathParts[0]+":http_"+strings.ToLower(c.Request().Method), &dst, req)
+		urn := fmt.Sprintf("api:%s:http_%s", pathParts[0], strings.ToLower(c.Request().Method))
+		err = a.app.Plugins.mgr.Call(urn, &dst, req)
 		if err != nil {
-			return c.JSON(500, err)
+			return c.JSON(500, map[string]interface{}{"error": err.Error})
 		}
-		c.JSON(200, dst)
+		return c.JSON(200, dst)
 	}
-	return nil
+	return c.JSON(404, map[string]interface{}{
+		"error": "the given path does not exist",
+	})
+
 }
 
 func (a *API) treeHandler(c echo.Context, path string) error {

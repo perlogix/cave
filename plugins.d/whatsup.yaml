@@ -1,0 +1,5 @@
+name: whatsup
+type: api
+exe_name: helloworld
+config:
+    name: doc

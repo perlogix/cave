@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/pkg/profile"
 )
 
@@ -28,7 +29,12 @@ var CONFIG *Config
 // TERMINATOR holds signal channels for goroutines
 var TERMINATOR map[string]chan bool
 
+// TRUSTTOKEN is a randomly-generated token that allows plugins
+// to communicate with the server without authenticating
+var TRUSTTOKEN string
+
 func main() {
+	TRUSTTOKEN = uuid.New().String()
 	var p interface{ Stop() }
 	if os.Getenv("PROFILE") != "" {
 		p = profile.Start(profile.ProfilePath("diag/"), profile.MemProfile)

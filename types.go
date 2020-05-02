@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/url"
 	"time"
@@ -105,11 +104,11 @@ type node struct {
 
 // PluginConfig type
 type PluginConfig struct {
-	Name    string          `yaml:"name"`
-	ExeName string          `yaml:"exe_name"`
-	Type    string          `yaml:"type"` // authenticator, api, etc.
-	Env     []string        `yaml:"env"`
-	Config  json.RawMessage `yaml:"config"`
+	Name    string                 `yaml:"name"`
+	ExeName string                 `yaml:"exe_name"`
+	Type    string                 `yaml:"type"` // authenticator, api, etc.
+	Env     []string               `yaml:"env"`
+	Config  map[string]interface{} `yaml:"config"`
 }
 
 // APIRequest type

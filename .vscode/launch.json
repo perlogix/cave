@@ -10,12 +10,13 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
+            "cwd": ".",
             "env": {
                 "DEBUG": true
             },
             "args": [
-                "--cluster.bindport=2000",
-                "--cluster.advertisehost=10.0.0.134:2000",
+                "--cluster.port=2000",
+                "--cluster.host=10.0.0.134:2000",
                 "--cluster.discoveryhost=10.0.0.134:2001",
                 "--mode=dev"
             ]

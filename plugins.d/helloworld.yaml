@@ -1,4 +1,4 @@
-name: hw
+name: helloworld
 exe_name: helloworld
 type: api
 env:

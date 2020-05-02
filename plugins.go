@@ -42,6 +42,7 @@ func NewPlugins(app *Cave) (*Plugins, error) {
 			Config:  i.Config,
 			ExePath: "./plugins.d/" + i.ExeName,
 			Env:     i.Env,
+			Token:   TRUSTTOKEN,
 		})
 		if err != nil {
 			return nil, err
@@ -79,7 +80,7 @@ func pluginList(path string) (map[string]PluginConfig, error) {
 	}
 	yamls := []string{}
 	for _, f := range ls {
-		if strings.HasSuffix(f.Name(), ".yaml") || strings.HasSuffix(f.Name(), ".yaml") {
+		if strings.HasSuffix(f.Name(), ".yaml") || strings.HasSuffix(f.Name(), ".yml") {
 			yamls = append(yamls, f.Name())
 		}
 	}
