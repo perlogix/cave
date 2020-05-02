@@ -36,19 +36,19 @@ func (l Log) New(config *Config) *Log {
 		log.logQueue = make(chan string, config.Perf.BufferSize)
 	}
 	log.metrics["queue"] = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "bunker_log_log_queue_len",
+		Name: "cave_log_log_queue_len",
 		Help: "The number of logs currently residing in the log queue",
 	})
 	log.metrics["apiqueue"] = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "bunker_log_api_queue_len",
+		Name: "cave_log_api_queue_len",
 		Help: "The number of logs currently residing in the log API queue",
 	})
 	log.metrics["log_counter"] = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "bunker_log_logs_written",
+		Name: "cave_log_logs_written",
 		Help: "The number of logs written to stdout",
 	})
 	log.metrics["severity"] = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "bunker_log_severity_distribution",
+		Name: "cave_log_severity_distribution",
 		Help: "Distribution of log severities",
 	}, []string{"severity"})
 	return log

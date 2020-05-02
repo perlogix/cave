@@ -72,35 +72,35 @@ func newCluster(app *Cave) (*Cluster, error) {
 func metrics() map[string]interface{} {
 	m := map[string]interface{}{
 		"peers": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_cluster_network_size",
+			Name: "cave_cluster_network_size",
 			Help: "The size of the peer network",
 		}),
 		"peerlatency": promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "bunker_cluster_peer_latency",
+			Name: "cave_cluster_peer_latency",
 			Help: "Latencies in ms from this node to its peers",
 		}, []string{"peer"}),
 		"messages_rx": promauto.NewCounterVec(prometheus.CounterOpts{
-			Name: "bunker_cluster_messages_rx",
+			Name: "cave_cluster_messages_rx",
 			Help: "Number of cluster messages recieved by type",
 		}, []string{"operation", "type"}),
 		"messages_tx": promauto.NewCounterVec(prometheus.CounterOpts{
-			Name: "bunker_cluster_messages_tx",
+			Name: "cave_cluster_messages_tx",
 			Help: "Number of cluster messages sent by type",
 		}, []string{"operation", "type"}),
 		"sync_tx": promauto.NewCounter(prometheus.CounterOpts{
-			Name: "bunker_cluster_sync_tx_bytes",
+			Name: "cave_cluster_sync_tx_bytes",
 			Help: "Number of bytes transmitted in sync operations",
 		}),
 		"sync_rx": promauto.NewCounter(prometheus.CounterOpts{
-			Name: "bunker_cluster_sync_rx_bytes",
+			Name: "cave_cluster_sync_rx_bytes",
 			Help: "Number of bytes recieved in sync operations",
 		}),
 		"in": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_cluster_connections_inbound",
+			Name: "cave_cluster_connections_inbound",
 			Help: "Number of inbound cluster connections",
 		}),
 		"out": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_cluster_connections_outbound",
+			Name: "cave_cluster_connections_outbound",
 			Help: "Number of outbound cluster connections",
 		}),
 	}

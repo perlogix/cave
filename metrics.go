@@ -15,103 +15,103 @@ func mainMetrics() {
 	m := map[string]interface{}{
 		// RUNTIME
 		"numcpu": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_cpu_count",
+			Name: "cave_runtime_cpu_count",
 			Help: "The number of CPU's the app runtime can see",
 		}),
 		"numgo": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_goroutine_count",
+			Name: "cave_runtime_goroutine_count",
 			Help: "The number of running goroutines",
 		}),
 		"lookups": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_lookups",
+			Name: "cave_runtime_lookups",
 			Help: "Number of pointer lookups performed by the runtime",
 		}),
 		"mallocs": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_heap_allocs",
+			Name: "cave_runtime_heap_allocs",
 			Help: "Cumulative count of heap objects allocated",
 		}),
 		"frees": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_heap_frees",
+			Name: "cave_runtime_heap_frees",
 			Help: "Cumulative count of freed heap objects",
 		}),
 		"heap_alloc": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_heap_used_bytes",
+			Name: "cave_runtime_heap_used_bytes",
 			Help: "Total bytes used by the heap",
 		}),
 		"heap_total": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_heap_total_bytes",
+			Name: "cave_runtime_heap_total_bytes",
 			Help: "Total bytes available for the heap",
 		}),
 		"heap_idle": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_heap_idle_bytes",
+			Name: "cave_runtime_heap_idle_bytes",
 			Help: "Bytes in idle (unused) spans",
 		}),
 		"heap_inuse": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_heap_inuse_bytes",
+			Name: "cave_runtime_heap_inuse_bytes",
 			Help: "Bytes in in-use spans",
 		}),
 		"heap_released": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_heap_released_bytes",
+			Name: "cave_runtime_heap_released_bytes",
 			Help: "Bytes of memory returned to the OS",
 		}),
 		"heap_objects": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_heap_objects_count",
+			Name: "cave_runtime_heap_objects_count",
 			Help: "Number of objects in the heap",
 		}),
 		"gc_num": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_gc_count",
+			Name: "cave_runtime_gc_count",
 			Help: "Number of times the garbage collector has run",
 		}),
 		"gc_pause": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_runtime_gc_pause_ms",
+			Name: "cave_runtime_gc_pause_ms",
 			Help: "Number of miliseconds the garbage collector has paused the program",
 		}), // PSUTIL
 		"proc_cpu": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_process_cpu_pct",
-			Help: "The percent of CPU that the bunker process uses",
+			Name: "cave_process_cpu_pct",
+			Help: "The percent of CPU that the cave process uses",
 		}),
 		"proc_children": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_process_child_count",
+			Name: "cave_process_child_count",
 			Help: "The number of child processes of the main PID",
 		}),
 		"net_conns": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_process_network_connection_count",
+			Name: "cave_process_network_connection_count",
 			Help: "The number of network connections the process owns",
 		}),
 		"proc_uptime": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_process_uptime",
+			Name: "cave_process_uptime",
 			Help: "Process uptime",
 		}),
 		"proc_io": promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "bunker_process_io_bytes",
+			Name: "cave_process_io_bytes",
 			Help: "Process IO in bytes",
 		}, []string{"op"}),
 		"proc_mempct": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_process_mem_pct",
+			Name: "cave_process_mem_pct",
 			Help: "Process memory usage as pct of total system mem",
 		}),
 		"proc_net_io": promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "bunker_process_network_io_bytes",
+			Name: "cave_process_network_io_bytes",
 			Help: "Process network IO in bytes",
 		}, []string{"op"}),
 		"proc_ctx": promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "bunker_process_ctx_switch_count",
+			Name: "cave_process_ctx_switch_count",
 			Help: "Process context switches",
 		}, []string{"type"}),
 		"proc_fd": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_process_fd_count",
+			Name: "cave_process_fd_count",
 			Help: "Number of fd's the process has open",
 		}),
 		"proc_threads": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_process_thread_count",
+			Name: "cave_process_thread_count",
 			Help: "Number of threads associated with the process",
 		}),
 		"proc_files": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_process_open_files_count",
+			Name: "cave_process_open_files_count",
 			Help: "Number of open files assocaited with the process",
 		}),
 		"load": promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "bunker_host_cpu_load",
+			Name: "cave_host_cpu_load",
 			Help: "Load statistics for the host",
 		}, []string{"interval"}),
 	}
@@ -189,7 +189,7 @@ func check(e error) {
 	return
 }
 
-// Returns a JSON schema for the Bunker Grafana Dashboard
+// Returns a JSON schema for the cave Grafana Dashboard
 func getDashboard() []byte {
 	return []byte(`{
 		"annotations": {
@@ -205,7 +205,7 @@ func getDashboard() []byte {
 			}
 		  ]
 		},
-		"description": "Official Bunker dashboard",
+		"description": "Official cave dashboard",
 		"editable": true,
 		"gnetId": null,
 		"graphTooltip": 0,
@@ -253,7 +253,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "bunker_process_cpu_pct",
+				"expr": "cave_process_cpu_pct",
 				"instant": false,
 				"legendFormat": "{{instance}}",
 				"refId": "A"
@@ -344,7 +344,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "bunker_cluster_network_size",
+				"expr": "cave_cluster_network_size",
 				"instant": false,
 				"legendFormat": "{{instance}}",
 				"refId": "A"
@@ -432,7 +432,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "bunker_process_mem_pct",
+				"expr": "cave_process_mem_pct",
 				"legendFormat": "{{instance}}",
 				"refId": "A"
 			  }
@@ -519,7 +519,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "bunker_kv_size_bytes",
+				"expr": "cave_kv_size_bytes",
 				"legendFormat": "{{instance}}",
 				"refId": "A"
 			  }
@@ -606,7 +606,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "rate(bunker_process_network_io_bytes[5m])",
+				"expr": "rate(cave_process_network_io_bytes[5m])",
 				"legendFormat": "{{instance}} ({{op}})",
 				"refId": "A"
 			  }
@@ -693,7 +693,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "sum by (severity) (bunker_log_severity_distribution)",
+				"expr": "sum by (severity) (cave_log_severity_distribution)",
 				"legendFormat": "{{severity}}",
 				"refId": "A"
 			  }
@@ -780,7 +780,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "bunker_process_open_files_count",
+				"expr": "cave_process_open_files_count",
 				"legendFormat": "{{instance}}",
 				"refId": "A"
 			  }
@@ -867,7 +867,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "bunker_runtime_goroutine_count",
+				"expr": "cave_runtime_goroutine_count",
 				"legendFormat": "{{instance}}",
 				"refId": "A"
 			  }
@@ -1044,7 +1044,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "bunker_kv_db_freelist_bytes_total",
+				"expr": "cave_kv_db_freelist_bytes_total",
 				"legendFormat": "{{instance}}",
 				"refId": "A"
 			  }
@@ -1131,7 +1131,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "bunker_runtime_heap_used_bytes / bunker_runtime_heap_total_bytes",
+				"expr": "cave_runtime_heap_used_bytes / cave_runtime_heap_total_bytes",
 				"legendFormat": "{{instance}}",
 				"refId": "A"
 			  }
@@ -1218,7 +1218,7 @@ func getDashboard() []byte {
 			"steppedLine": false,
 			"targets": [
 			  {
-				"expr": "avg by (type) (bunker_kv_transaction_time_ms)",
+				"expr": "avg by (type) (cave_kv_transaction_time_ms)",
 				"legendFormat": "{{type}}",
 				"refId": "A"
 			  }
@@ -1291,7 +1291,7 @@ func getDashboard() []byte {
 		  ]
 		},
 		"timezone": "",
-		"title": "Bunker Dashboard",
+		"title": "cave Dashboard",
 		"uid": "G-oS_aCWk",
 		"version": 1
 	  }`)

@@ -54,8 +54,8 @@ func getConfig() (*Config, error) {
 	v.SetConfigName("config.yaml")
 	v.SetConfigType("yaml")
 	v.AddConfigPath(".")
-	v.AddConfigPath("/etc/yeticloud/bunker")
-	v.SetEnvPrefix("BUNKER")
+	v.AddConfigPath("/etc/yeticloud/cave")
+	v.SetEnvPrefix("CAVE")
 	v.AutomaticEnv()
 	flags, err := bindFlags(id)
 	if err != nil {
@@ -85,7 +85,7 @@ func getConfig() (*Config, error) {
 }
 
 func bindFlags(nodeid string) (*pflag.FlagSet, error) {
-	fs := pflag.NewFlagSet("Bunker", pflag.ExitOnError)
+	fs := pflag.NewFlagSet("Cave", pflag.ExitOnError)
 	fs.SortFlags = true
 	fs.BoolP("help", "h", false, "Prints out this usage/help info")
 	fs.StringP("mode", "m", "dev", "Sets the operation mode: dev, prod")
@@ -118,10 +118,10 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 		return fs, err
 	}
 	if h {
-		os.Stderr.WriteString("\nBunker is an encrypted, distributed key-value store.\n\n")
+		os.Stderr.WriteString("\nCave is an encrypted, distributed key-value store.\n\n")
 		os.Stderr.WriteString("Command-line usage:\n")
 		fs.PrintDefaults()
-		os.Stderr.WriteString("\nAdditional help and documentation can be found at https://github.com/yeticloud/bunker\n\n")
+		os.Stderr.WriteString("\nAdditional help and documentation can be found at https://github.com/yeticloud/cave\n\n")
 		os.Exit(2)
 	}
 	return fs, nil

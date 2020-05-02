@@ -105,39 +105,39 @@ func newKV(app *Cave) (*KV, error) {
 func kvmetrics() map[string]interface{} {
 	return map[string]interface{}{
 		"pagefree": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_kv_db_freelist_pages_free",
+			Name: "cave_kv_db_freelist_pages_free",
 			Help: "Total number of free pages on the freelist",
 		}),
 		"pagepending": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_kv_db_freelist_pages_pending",
+			Name: "cave_kv_db_freelist_pages_pending",
 			Help: "Total number of pending pages on the freelist",
 		}),
 		"pagealloc": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_kv_db_freelist_bytes_total",
+			Name: "cave_kv_db_freelist_bytes_total",
 			Help: "Total bytes allocted in free pages",
 		}),
 		"pageuse": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_kv_db_freelist_bytes_used",
+			Name: "cave_kv_db_freelist_bytes_used",
 			Help: "Total bytes used in the freelist",
 		}),
 		"tx_tot": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_kv_db_tx_count",
+			Name: "cave_kv_db_tx_count",
 			Help: "Total number of started read transactions",
 		}),
 		"tx_open": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_kv_db_tx_open",
+			Name: "cave_kv_db_tx_open",
 			Help: "Number of currently open read transactions",
 		}),
 		"transaction_time": promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "bunker_kv_transaction_time_ms",
+			Name: "cave_kv_transaction_time_ms",
 			Help: "Duration of transactions by type",
 		}, []string{"type"}),
 		"dbsize": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_kv_size_bytes",
+			Name: "cave_kv_size_bytes",
 			Help: "Size in bytes of the database on disk",
 		}),
 		"kv_q": promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "bunker_kv_update_queue_size",
+			Name: "cave_kv_update_queue_size",
 			Help: "Length of the KV update queue",
 		}),
 	}

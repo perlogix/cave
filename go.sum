@@ -297,6 +297,8 @@ github.com/yeticloud/libsubrpc v0.0.0-20200502085834-d42be96d4ba5 h1:ZxqSL3Dm+bE
 github.com/yeticloud/libsubrpc v0.0.0-20200502085834-d42be96d4ba5/go.mod h1:NJTHxIEJ0wXSJRGPRgTWnLjGgZQuiQ4GFzroBWimGIg=
 github.com/yeticloud/libsubrpc v0.0.0-20200502091045-c4157712683c h1:8sk/RZriqFqx+IEhQst79DC3N2xzYjXDArzNK3ERne4=
 github.com/yeticloud/libsubrpc v0.0.0-20200502091045-c4157712683c/go.mod h1:NJTHxIEJ0wXSJRGPRgTWnLjGgZQuiQ4GFzroBWimGIg=
+github.com/yeticloud/libsubrpc v0.0.0-20200502201456-9aa57a4a1765 h1:/RM0CRhXvhnxzBKHq1YmAzI3+RJwgvkGDJqYME2dWYg=
+github.com/yeticloud/libsubrpc v0.0.0-20200502201456-9aa57a4a1765/go.mod h1:NJTHxIEJ0wXSJRGPRgTWnLjGgZQuiQ4GFzroBWimGIg=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.etcd.io/bbolt v1.3.2 h1:Z/90sZLPOeCy2PwprqkFa25PdkusRzaj9P8zm/KNyvk=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
