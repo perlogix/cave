@@ -17,6 +17,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.5.1 // indirect
+	github.com/tidwall/gjson v1.6.0 // indirect
 	github.com/yeticloud/libsubrpc v0.0.0-20200502201456-9aa57a4a1765
 	go.etcd.io/bbolt v1.3.2
 	go.uber.org/zap v1.14.1 // indirect

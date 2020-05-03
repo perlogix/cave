@@ -29,6 +29,7 @@ type Cluster struct {
 	network       *kademlia.Protocol
 	epoch         uint64
 	updates       chan Message
+	tokens        chan Message
 	synced        chan bool
 	peers         []noise.ID
 	log           *Log
@@ -107,7 +108,7 @@ func metrics() map[string]interface{} {
 	return m
 }
 
-func (c *Cluster) registerHandlers(updates chan Message, sync chan Message) error {
+func (c *Cluster) registerHandlers(updates chan Message, sync chan Message, tokens chan Message) error {
 	if c.config.Mode == "dev" {
 		return nil
 	}
@@ -149,6 +150,8 @@ func (c *Cluster) registerHandlers(updates chan Message, sync chan Message) erro
 					}
 				}()
 			}
+		case "token":
+			tokens <- msg
 		default:
 			c.log.ErrorF("No channel for message type %s", msg.Type)
 		}

@@ -39,13 +39,17 @@ func NewPlugins(app *Cave) (*Plugins, error) {
 		return nil, err
 	}
 	for _, i := range plugs {
-		err := p.mgr.NewProcess(subrpc.ProcessOptions{
+		t, err := app.TokenStore.Issue(i.Name, "plugin:"+i.Type, false)
+		if err != nil {
+			return nil, err
+		}
+		err = p.mgr.NewProcess(subrpc.ProcessOptions{
 			Name:    i.Name,
 			Type:    i.Type,
 			Config:  i.Config,
 			ExePath: "./plugins.d/" + i.ExeName,
 			Env:     i.Env,
-			Token:   TRUSTTOKEN,
+			Token:   t.Token,
 		})
 		if err != nil {
 			return nil, err

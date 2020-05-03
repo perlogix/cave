@@ -20,18 +20,20 @@ type Config struct {
 
 // Cave struct wraps all the app functions
 type Cave struct {
-	Config    *Config
-	Logger    *Log
-	Cluster   *Cluster
-	KV        *KV
-	KVInit    bool
-	API       *API
-	Auth      *AuthService
-	Crypto    *Crypto
-	Plugins   *Plugins
-	updates   chan Message
-	sync      chan Message
-	sharedKey *AESKey
+	Config     *Config
+	Logger     *Log
+	Cluster    *Cluster
+	KV         *KV
+	KVInit     bool
+	API        *API
+	Auth       *AuthService
+	Crypto     *Crypto
+	Plugins    *Plugins
+	TokenStore *TokenStore
+	updates    chan Message
+	sync       chan Message
+	tokens     chan Message
+	sharedKey  *AESKey
 }
 
 //ClusterConfig type holds the cluster interface objects.
@@ -119,4 +121,14 @@ type APIRequest struct {
 	Host      string
 	UserAgent string
 	Cookies   []*http.Cookie
+}
+
+// Token type
+type Token struct {
+	IssueTime  time.Time
+	ExpireTime time.Time
+	UID        string
+	Token      string
+	IssuedBy   string
+	Type       string
 }

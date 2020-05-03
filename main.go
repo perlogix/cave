@@ -5,7 +5,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/google/uuid"
 	"github.com/pkg/profile"
 )
 
@@ -29,12 +28,7 @@ var CONFIG *Config
 // TERMINATOR holds signal channels for goroutines
 var TERMINATOR map[string]chan bool
 
-// TRUSTTOKEN is a randomly-generated token that allows plugins
-// to communicate with the server without authenticating
-var TRUSTTOKEN string
-
 func main() {
-	TRUSTTOKEN = uuid.New().String()
 	var p interface{ Stop() }
 	if os.Getenv("PROFILE") != "" {
 		p = profile.Start(profile.ProfilePath("diag/"), profile.MemProfile)
@@ -69,8 +63,9 @@ func main() {
 	app.Cluster = cluster
 	app.updates = make(chan Message, 4096)
 	app.sync = make(chan Message, 4096)
+	app.tokens = make(chan Message, 4096)
 	clusterReady := make(chan bool)
-	err = app.Cluster.registerHandlers(app.updates, app.sync)
+	err = app.Cluster.registerHandlers(app.updates, app.sync, app.tokens)
 	if err != nil {
 		panic(err)
 	}
@@ -90,6 +85,13 @@ func main() {
 			panic(err)
 		}
 	}
+	tok, err := NewTokenStore(app)
+	if err != nil {
+		panic(err)
+	}
+	app.TokenStore = tok
+	TERMINATOR["tokens"] = tok.terminate
+	go app.TokenStore.Start()
 	plugins, err := NewPlugins(app)
 	if err != nil {
 		panic(err)
@@ -123,7 +125,7 @@ func main() {
 	log.Debug("START: API")
 	<-kill
 	log.Warn("Got kill signal from OS, shutting down...")
-	for _, t := range []string{"api", "auth", "kv", "cluster", "log", "plugins"} {
+	for _, t := range []string{"api", "auth", "kv", "cluster", "log", "plugins", "tokens"} {
 		log.Warn("Shutting down " + t)
 		TERMINATOR[t] <- true
 	}
