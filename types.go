@@ -8,14 +8,15 @@ import (
 
 // Config type defines the file configuration data
 type Config struct {
-	Mode    string        `yaml:"mode"`
-	Cluster ClusterConfig `yaml:"cluster"`
-	KV      KVConfig      `yaml:"kv"`
-	API     APIConfig     `yaml:"api"`
-	UI      UIConfig      `yaml:"ui"`
-	SSL     SSLConfig     `yaml:"ssl"`
-	Perf    PerfConfig    `yaml:"performance"`
-	Auth    AuthConfig    `yaml:"auth"`
+	Mode    string          `yaml:"mode"`
+	Cluster ClusterConfig   `yaml:"cluster"`
+	KV      KVConfig        `yaml:"kv"`
+	API     APIConfig       `yaml:"api"`
+	UI      UIConfig        `yaml:"ui"`
+	SSL     SSLConfig       `yaml:"ssl"`
+	Perf    PerfConfig      `yaml:"performance"`
+	Auth    AuthConfig      `yaml:"auth"`
+	Plugin  PluginAppConfig `yaml:"plugin"`
 }
 
 // Cave struct wraps all the app functions
@@ -86,6 +87,13 @@ type PerfConfig struct {
 // AuthConfig type
 type AuthConfig struct {
 	Provider string `yaml:"provider"`
+}
+
+// PluginAppConfig type
+type PluginAppConfig struct {
+	PluginPath    string   `yaml:"plugin_path"`
+	AllowUnsigned bool     `yaml:"allow_unsigned"`
+	Blacklist     []string `yaml:"blacklist"`
 }
 
 // Message type represents a message on the wire

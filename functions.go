@@ -49,6 +49,11 @@ func getConfig() (*Config, error) {
 			EnableHTTPLogs: true,
 			BufferSize:     4096,
 		},
+		Plugin: PluginAppConfig{
+			PluginPath:    "./plugins.d/",
+			AllowUnsigned: true,
+			Blacklist:     []string{},
+		},
 	}
 	v := viper.New()
 	v.SetConfigName("config.yaml")
@@ -109,6 +114,9 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs.Bool("performance.enablehttplogs", true, "Enable an HTTP endpoint for getting logs")
 	fs.Uint64("performance.buffersize", 4096, "Internal buffer size")
 	fs.String("auth.provider", "token", "Authentication method selection (token, basic, none)")
+	fs.String("plugin.pluginpath", "./plugins.d/", "Path to the plugins.d directory")
+	fs.Bool("plugin.allowunsigned", true, "Allow unsigned plugins to be run")
+	fs.StringSlice("plugin.blacklist", []string{}, "Disallow certain plugins from running by plugin name")
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		return fs, err
