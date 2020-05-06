@@ -53,6 +53,7 @@ func getConfig() (*Config, error) {
 			PluginPath:    "./plugins.d/",
 			AllowUnsigned: true,
 			Blacklist:     []string{},
+			SocketPrefix:  "/tmp/",
 		},
 	}
 	v := viper.New()
@@ -117,6 +118,7 @@ func bindFlags(nodeid string) (*pflag.FlagSet, error) {
 	fs.String("plugin.pluginpath", "./plugins.d/", "Path to the plugins.d directory")
 	fs.Bool("plugin.allowunsigned", true, "Allow unsigned plugins to be run")
 	fs.StringSlice("plugin.blacklist", []string{}, "Disallow certain plugins from running by plugin name")
+	fs.String("plugin.socketprefix", "/tmp/", "Prefix for creating new socket fd's")
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		return fs, err

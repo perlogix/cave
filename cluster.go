@@ -165,6 +165,10 @@ func (c *Cluster) Start(clusterReady chan bool) {
 	if c.config.Mode == "dev" {
 		c.genRSA = true
 		clusterReady <- true
+		go func() {
+			// ensure something is there to read the terminate signal
+			_ = <-c.terminate
+		}()
 		return
 	}
 	startup := true

@@ -36,7 +36,7 @@ func main() {
 	}
 	TERMINATOR = map[string]chan bool{}
 	kill := make(chan os.Signal)
-	signal.Notify(kill, syscall.SIGKILL, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(kill, syscall.SIGKILL, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	go mainMetrics()
 	CONFIG, err := getConfig()
 	if err != nil {
@@ -119,13 +119,13 @@ func main() {
 	app.API = api
 	TERMINATOR["api"] = api.terminate
 	// START SHIT
-	go app.KV.Start()
+	go app.KV.start()
 	log.Debug("START: KV")
 	go app.API.Start()
 	log.Debug("START: API")
 	<-kill
 	log.Warn("Got kill signal from OS, shutting down...")
-	for _, t := range []string{"api", "auth", "kv", "cluster", "log", "plugins", "tokens"} {
+	for _, t := range []string{"api", "auth", "kv", "cluster", "plugins", "tokens", "log"} {
 		log.Warn("Shutting down " + t)
 		TERMINATOR[t] <- true
 	}

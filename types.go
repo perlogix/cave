@@ -94,6 +94,7 @@ type PluginAppConfig struct {
 	PluginPath    string   `yaml:"plugin_path"`
 	AllowUnsigned bool     `yaml:"allow_unsigned"`
 	Blacklist     []string `yaml:"blacklist"`
+	SocketPrefix  string   `yaml:"socket_prefix"`
 }
 
 // Message type represents a message on the wire

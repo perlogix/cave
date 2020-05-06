@@ -29,6 +29,7 @@ type KV struct {
 	crypto    *Crypto
 	sharedkey *AESKey
 	metrics   map[string]interface{}
+	Service   interface{}
 }
 
 // KVUpdate type
@@ -170,8 +171,12 @@ func dbClose(db *bbolt.DB) error {
 	return nil
 }
 
-// Start func
-func (kv *KV) Start() {
+// start func
+func (kv *KV) start() {
+	err := kv.app.Plugins.mgr.RPC.RegisterName("kv", kv)
+	if err != nil {
+		panic(err)
+	}
 	for {
 		go kv.metrics["kv_q"].(prometheus.Gauge).Set(float64(len(kv.updates)))
 		select {
@@ -486,19 +491,14 @@ func (kv *KV) DeleteBucket(key string, prefix string, e ...bool) error {
 
 // GetTree gets the db tree from the specified root to n-depth.
 // If root is not given, it returns the entire db tree.
-func (kv *KV) GetTree(prefix string, root ...string) (map[string]interface{}, error) {
+func (kv *KV) GetTree(prefix string) (map[string]interface{}, error) {
 	start := time.Now()
 	defer kv.doMetrics("get:tree", start)
-	startPath := ""
-	if len(root) > 0 {
-		startPath = root[0]
-	}
 	tree := map[string]interface{}{}
-	buckets, k := parsePath(startPath)
+	buckets, k := parsePath("")
 	if k != "" {
 		buckets = append(buckets, k)
 	}
-	fmt.Println(buckets, k)
 	err := kv.db.View(func(tx *bbolt.Tx) error {
 		b, _, err := kv.getBuckets(tx, buckets, prefix, false)
 		if err != nil {

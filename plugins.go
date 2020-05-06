@@ -26,8 +26,12 @@ type Plugins struct {
 
 // NewPlugins function
 func NewPlugins(app *Cave) (*Plugins, error) {
+	mgr, err := subrpc.NewManager("/sock/")
+	if err != nil {
+		return nil, err
+	}
 	p := &Plugins{
-		mgr:       subrpc.NewManager(),
+		mgr:       mgr,
 		app:       app,
 		terminate: make(chan bool),
 		config:    app.Config,
@@ -69,7 +73,7 @@ func (p *Plugins) Start() {
 	}
 	go p.Logger()
 	go p.doMetrics()
-	<-p.terminate
+	_ = <-p.terminate
 	errs = p.mgr.StopAll()
 	if len(errs) > 0 {
 		for _, e := range errs {

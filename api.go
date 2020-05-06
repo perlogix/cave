@@ -170,7 +170,7 @@ func (a *API) PluginHandler(c echo.Context) error {
 }
 
 func (a *API) treeHandler(c echo.Context, path string) error {
-	tree, err := a.kv.GetTree("kv", path)
+	tree, err := a.kv.GetTree("kv")
 	if err != nil {
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}

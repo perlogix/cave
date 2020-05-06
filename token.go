@@ -96,6 +96,8 @@ func (t *TokenStore) Start() {
 			}
 		}()
 		select {
+		case <-t.terminate:
+			return
 		case m := <-t.tokens:
 			err := t.HandleUpdate(m)
 			if err != nil {
