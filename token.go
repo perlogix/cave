@@ -101,7 +101,7 @@ func (t *TokenStore) Start() {
 		case m := <-t.tokens:
 			err := t.HandleUpdate(m)
 			if err != nil {
-				t.log.Error(err)
+				t.log.Error(nil, err)
 			}
 		default:
 			// clean up tokens every 100 runs or so
@@ -117,7 +117,7 @@ func (t *TokenStore) Start() {
 				for _, i := range del {
 					err := t.Delete(i)
 					if err != nil {
-						t.log.Error(err)
+						t.log.Error(nil, err)
 					}
 				}
 				go func() {

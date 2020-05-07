@@ -231,6 +231,8 @@ github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521/go.mod h1:RvLn4FgxWubr
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/shirou/gopsutil v2.20.3+incompatible h1:0JVooMPsT7A7HqEYdydp/OfjSOYSjhXV7w1hkKj/NPQ=
 github.com/shirou/gopsutil v2.20.3+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
+github.com/shirou/gopsutil v2.20.4+incompatible h1:cMT4rxS55zx9NVUnCkrmXCsEB/RNfG9SwHY9evtX8Ng=
+github.com/shirou/gopsutil v2.20.4+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.2 h1:SPIRibHv4MatM3XXNO2BJeFLZwZ2LvZgfQ5+UNI2im4=
@@ -281,6 +283,8 @@ github.com/valyala/fasttemplate v1.1.0/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPU
 github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208/go.mod h1:IotVbo4F+mw0EzQ08zFqg7pK3FebNXpaMsRy2RT+Ees=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
+github.com/yeticloud/airboss v0.0.0-20200507065332-898351d94bea h1:hoOufNe/2hSXWU778hjdY6YaVPQbDg2Q6YuDA3K7D0Q=
+github.com/yeticloud/airboss v0.0.0-20200507065332-898351d94bea/go.mod h1:SCozARd85ze92Q1vBR4RFsayAXg/BcT3ngJ37XnuXSo=
 github.com/yeticloud/libsubrpc v0.0.0-20200506191225-2ddc8487134e h1:PZZfpRvdv70CIPP46jaG9DI6w1JcEkOba2Ugd9Hlh90=
 github.com/yeticloud/libsubrpc v0.0.0-20200506191225-2ddc8487134e/go.mod h1:NJTHxIEJ0wXSJRGPRgTWnLjGgZQuiQ4GFzroBWimGIg=
 github.com/yeticloud/libsubrpc v0.0.0-20200506191813-27b7d237655d h1:V3RfVl/Olj4x26n/A9PmKhxi27r3+tkhLPOixBzgy3k=
@@ -289,6 +293,14 @@ github.com/yeticloud/libsubrpc v0.0.0-20200506202328-e64318cab324 h1:1k/ArSX+3vm
 github.com/yeticloud/libsubrpc v0.0.0-20200506202328-e64318cab324/go.mod h1:NJTHxIEJ0wXSJRGPRgTWnLjGgZQuiQ4GFzroBWimGIg=
 github.com/yeticloud/libsubrpc v0.0.0-20200506202835-20537e42e8bf h1:Hiq9BdtottuEgOFTbgwKgSqV3Uata12e8i8hzndC6zw=
 github.com/yeticloud/libsubrpc v0.0.0-20200506202835-20537e42e8bf/go.mod h1:NJTHxIEJ0wXSJRGPRgTWnLjGgZQuiQ4GFzroBWimGIg=
+github.com/yeticloud/libsubrpc v0.0.0-20200507202334-ae811c1808cf h1:eGTICsvTRx8G9vAm7Z3KN26NslLFNzycTTq8OvMmvr8=
+github.com/yeticloud/libsubrpc v0.0.0-20200507202334-ae811c1808cf/go.mod h1:+8HGSYX8gwxEJVcqWVxEmeutdmDFv5nhAXJLqmLNABw=
+github.com/yeticloud/libsubrpc v0.0.0-20200507211312-e93c86b51c2b h1:7dacUIMSvrMz2TDNRWuqkR0I9cgcp4HOda1qEmHws+s=
+github.com/yeticloud/libsubrpc v0.0.0-20200507211312-e93c86b51c2b/go.mod h1:+8HGSYX8gwxEJVcqWVxEmeutdmDFv5nhAXJLqmLNABw=
+github.com/yeticloud/libsubrpc v0.0.0-20200507214052-4ec8852299bd h1:SvqOqrCNl0K/TJXdum6DJMjahqIXP5KoK9PGHXFj+kg=
+github.com/yeticloud/libsubrpc v0.0.0-20200507214052-4ec8852299bd/go.mod h1:PDZCapdDjTFYCz8CGY59V0/GQRnw+ip+U1iL3CJLjKI=
+github.com/yeticloud/libsubrpc v0.0.0-20200507214255-f81bed0a38f2 h1:mC/OJ8wXH6+ZP+ETp/BPXFQcp422aiwmGGgAOx6SdNI=
+github.com/yeticloud/libsubrpc v0.0.0-20200507214255-f81bed0a38f2/go.mod h1:PDZCapdDjTFYCz8CGY59V0/GQRnw+ip+U1iL3CJLjKI=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.etcd.io/bbolt v1.3.2 h1:Z/90sZLPOeCy2PwprqkFa25PdkusRzaj9P8zm/KNyvk=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
@@ -372,6 +384,8 @@ golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200409092240-59c9f1ba88fa h1:mQTN3ECqfsViCNBgq+A40vdwhkGykrrQlYe3mPj6BoU=
 golang.org/x/sys v0.0.0-20200409092240-59c9f1ba88fa/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20200501145240-bc7a7d42d5c3 h1:5B6i6EAiSYyejWfvc5Rc9BbI3rzIsrrXfAQBWnYfn+w=
+golang.org/x/sys v0.0.0-20200501145240-bc7a7d42d5c3/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0 h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.2 h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=

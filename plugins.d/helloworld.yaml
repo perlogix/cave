@@ -2,7 +2,7 @@ name: helloworld
 exe_name: helloworld
 type: api
 env:
-   - "hello=fartbrains"
+   hello: fartbrains
 config:
    name: peter
    something: else

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -26,7 +28,7 @@ type Plugins struct {
 
 // NewPlugins function
 func NewPlugins(app *Cave) (*Plugins, error) {
-	mgr, err := subrpc.NewManager("/sock/")
+	mgr, err := subrpc.NewManager()
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +56,7 @@ func NewPlugins(app *Cave) (*Plugins, error) {
 			ExePath: "./plugins.d/" + i.ExeName,
 			Env:     i.Env,
 			Token:   t.Token,
+			Port:    findAPort(),
 		})
 		if err != nil {
 			return nil, err
@@ -64,23 +67,25 @@ func NewPlugins(app *Cave) (*Plugins, error) {
 
 // Start function
 func (p *Plugins) Start() {
+	p.log.Debug("Starting plugins")
 	errs := p.mgr.StartAllProcess()
 	if len(errs) > 0 {
 		for _, e := range errs {
-			p.log.Error(e)
-			return
+			p.log.Error("PLUGIN", e)
 		}
 	}
 	go p.Logger()
 	go p.doMetrics()
+	p.log.Debug("Done starting plugins")
 	_ = <-p.terminate
 	errs = p.mgr.StopAll()
 	if len(errs) > 0 {
 		for _, e := range errs {
-			p.log.Error(e)
+			p.log.Error("PLUGIN", e)
 			return
 		}
 	}
+
 	return
 }
 
@@ -123,17 +128,17 @@ func (p *Plugins) Logger() {
 	for range t.C {
 		l, err := p.mgr.OutBuffer.ReadString('\n')
 		if err != nil && err != io.EOF {
-			p.log.Error(err)
+			p.log.Error("PLUGIN", err)
 		}
 		if l != "" {
-			p.log.Debug(l)
+			p.log.Debug("PLUGIN", l)
 		}
 		l, err = p.mgr.ErrBuffer.ReadString('\n')
 		if err != nil && err != io.EOF {
-			p.log.Error(err)
+			p.log.Error("PLUGIN", err)
 		}
 		if l != "" {
-			p.log.Warn(l)
+			p.log.Warn("PLUGIN", l)
 		}
 	}
 }
@@ -207,3 +212,20 @@ func pluginMetrics() map[string]interface{} {
 		}, []string{"type", "name", "function", "error"}),
 	}
 }
+
+func findAPort() int {
+	start := 8000
+	for {
+		conn, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%v", start))
+		defer conn.Close()
+		if err != nil {
+			start++
+		} else {
+			return start
+		}
+	}
+}
+
+//// GO BACK TO SOCKETS
+//// CREATE SOCKET AHEAD OF TIME AND SET PERMISSIONS
+//// THIS SHIT IS DUMB AS FUCK

@@ -130,7 +130,7 @@ func (c *Cluster) registerHandlers(updates chan Message, sync chan Message, toke
 				go func() {
 					err := c.SyncResponse(msg)
 					if err != nil {
-						c.log.Error(err)
+						c.log.Error(nil, err)
 					}
 				}()
 			}
@@ -138,7 +138,7 @@ func (c *Cluster) registerHandlers(updates chan Message, sync chan Message, toke
 				go func() {
 					err := c.SendSharedKey(msg)
 					if err != nil {
-						c.log.Error(err)
+						c.log.Error(nil, err)
 					}
 				}()
 			}
@@ -146,14 +146,14 @@ func (c *Cluster) registerHandlers(updates chan Message, sync chan Message, toke
 				go func() {
 					err := c.HandleSharedKey(msg)
 					if err != nil {
-						c.log.Error(err)
+						c.log.Error(nil, err)
 					}
 				}()
 			}
 		case "token":
 			tokens <- msg
 		default:
-			c.log.ErrorF("No channel for message type %s", msg.Type)
+			c.log.ErrorF(nil, "No channel for message type %s", msg.Type)
 		}
 		return nil
 	})
@@ -176,10 +176,10 @@ func (c *Cluster) Start(clusterReady chan bool) {
 	if err := c.node.Listen(); err != nil {
 		panic(err)
 	}
-	c.log.Debug("Start clustering")
+	c.log.Debug(nil, "Start clustering")
 	peered := false
 	for peered == false {
-		c.log.Debug("waiting for peers")
+		c.log.Debug(nil, "waiting for peers")
 		select {
 		case <-c.terminate:
 			return
@@ -196,16 +196,16 @@ func (c *Cluster) Start(clusterReady chan bool) {
 			firstNode = true
 		}
 	}
-	c.log.Debug("Found at least 1 peer")
+	c.log.Debug(nil, "Found at least 1 peer")
 	index := 0
 	for {
 		// once we get a peer connection we can get the rest of the peers
 		select {
 		case <-c.terminate:
-			c.log.Info("Got termination signal")
+			c.log.Info(nil, "Got termination signal")
 			return
 		default:
-			//c.log.Debug("Discovering network")
+			//c.log.Debug(nil, "Discovering network")
 			c.peers = c.network.Discover()
 			go func() {
 				c.metrics["peers"].(prometheus.Gauge).Set(float64(len(c.peers) + 1))
@@ -219,7 +219,7 @@ func (c *Cluster) Start(clusterReady chan bool) {
 					start := time.Now()
 					_, err := c.node.Ping(ctx, p.Address)
 					if err != nil {
-						c.log.Error(err)
+						c.log.Error(nil, err)
 						cancel()
 						continue
 					}
@@ -238,11 +238,11 @@ func (c *Cluster) Start(clusterReady chan bool) {
 			if startup && !firstNode {
 				err := c.RequestSharedKey()
 				if err != nil {
-					c.log.Error(err)
+					c.log.Error(nil, err)
 				}
 				err = c.SyncRequest(clusterReady)
 				if err != nil {
-					c.log.Error(err)
+					c.log.Error(nil, err)
 					continue
 				}
 				startup = false
@@ -283,7 +283,7 @@ func (c *Cluster) Emit(typ string, data []byte, dtype string) error {
 			defer cancel()
 			err := c.node.Send(ctx, p, b)
 			if err != nil {
-				c.log.Error(err)
+				c.log.Error(nil, err)
 			}
 		}(b, p.Address)
 	}
@@ -298,7 +298,7 @@ func (c *Cluster) SyncResponse(msg Message) error {
 	}
 	exist := true
 	if _, err := os.Stat(c.config.KV.DBPath); os.IsNotExist(err) {
-		c.log.Warn("DB is empty, sending no data")
+		c.log.Warn(nil, "DB is empty, sending no data")
 		exist = false
 	}
 	conn, err := tls.Dial("tcp", string(msg.Data), &tls.Config{InsecureSkipVerify: true})
@@ -321,21 +321,21 @@ func (c *Cluster) SyncResponse(msg Message) error {
 	}
 	go c.metrics["sync_tx"].(prometheus.Counter).Add(float64(b))
 	conn.Close()
-	c.log.DebugF("Wrote %v bytes to sync operations", b)
+	c.log.DebugF(nil, "Wrote %v bytes to sync operations", b)
 	return nil
 }
 
 // SyncRequest emits a sync request to the nearest neighbor
 // nearest is determined by the locationTable
 func (c *Cluster) SyncRequest(clusterReady chan bool) error {
-	c.log.Debug("New sync request")
+	c.log.Debug(nil, "New sync request")
 	if c.config.Mode == "dev" {
 		return nil
 	}
 	if len(c.locationTable) == 0 {
 		return fmt.Errorf("No peers available to sync with")
 	}
-	c.log.Debug("At least 1 peer to sync with")
+	c.log.Debug(nil, "At least 1 peer to sync with")
 	id := uuid.New()
 	syncAddress := fmt.Sprintf("%s:%v", strings.Split(c.node.ID().Address, ":")[0], c.config.Cluster.SyncPort)
 	ready := make(chan error)
@@ -365,7 +365,7 @@ func (c *Cluster) SyncRequest(clusterReady chan bool) error {
 			return c.locationTable[i].Distance < c.locationTable[j].Distance
 		})
 	}
-	c.log.DebugF("Sending request to %s", c.locationTable[0].Address)
+	c.log.DebugF(nil, "Sending request to %s", c.locationTable[0].Address)
 	err = c.node.Send(ctx, c.locationTable[0].Address, b)
 	if err != nil {
 		return err
@@ -394,59 +394,59 @@ func (c *Cluster) SyncHandle(addr string, ready chan error, clusterReady chan bo
 	conn, err := srv.Accept()
 	defer conn.Close()
 	if err != nil {
-		c.log.Error(err)
+		c.log.Error(nil, err)
 		return
 	}
 	err = conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 	if err != nil {
-		c.log.Error(err)
+		c.log.Error(nil, err)
 		return
 	}
 	var buf bytes.Buffer
 	n1, err := io.Copy(&buf, conn)
 	if err != nil {
-		c.log.Error(err)
+		c.log.Error(nil, err)
 		return
 	}
 	go c.metrics["sync_rx"].(prometheus.Counter).Add(float64(n1))
-	c.log.DebugF("Got %v bytes in sync operation", n1)
+	c.log.DebugF(nil, "Got %v bytes in sync operation", n1)
 	conn.Close()
 	if c.app.KVInit {
 		err := dbClose(c.app.KV.db)
 		if err != nil {
-			c.log.Error(err)
+			c.log.Error(nil, err)
 			return
 		}
 	}
 	db, err := os.OpenFile(c.config.KV.DBPath, os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
-		c.log.Error(err)
+		c.log.Error(nil, err)
 		return
 	}
 	defer db.Close()
 	n2, err := io.Copy(db, &buf)
 	if err != nil {
-		c.log.Error(err)
+		c.log.Error(nil, err)
 		return
 	}
 	err = db.Sync()
 	if err != nil {
-		c.log.Error(err)
+		c.log.Error(nil, err)
 		return
 	}
-	c.log.DebugF("Copied %v bytes from tmp to db file", n2)
+	c.log.DebugF(nil, "Copied %v bytes from tmp to db file", n2)
 	if n1 != n2 {
-		c.log.ErrorF("Got %v from sync but only wrote %v bytes to db", n1, n2)
+		c.log.ErrorF(nil, "Got %v from sync but only wrote %v bytes to db", n1, n2)
 		return
 	}
 	if c.app.KVInit {
 		c.app.KV.db, err = dbOpen(c.app.KV.dbPath, c.app.KV.options)
 		if err != nil {
-			c.log.Error(err)
+			c.log.Error(nil, err)
 			return
 		}
 	}
-	c.log.Debug("Synced database")
+	c.log.Debug(nil, "Synced database")
 	return
 }
 
@@ -458,7 +458,7 @@ func (c *Cluster) RequestSharedKey() error {
 	if len(c.locationTable) == 0 {
 		return fmt.Errorf("No peers available to sync with")
 	}
-	c.log.Debug("At least 1 peer to sync with")
+	c.log.Debug(nil, "At least 1 peer to sync with")
 	id := uuid.New()
 	res := &Message{
 		Epoch:    c.epoch + 1,
@@ -480,7 +480,7 @@ func (c *Cluster) RequestSharedKey() error {
 			return c.locationTable[i].Distance < c.locationTable[j].Distance
 		})
 	}
-	c.log.DebugF("Sending sharedkey request to %s", c.locationTable[0].Address)
+	c.log.DebugF(nil, "Sending sharedkey request to %s", c.locationTable[0].Address)
 	err = c.node.Send(ctx, c.locationTable[0].Address, b)
 	if err != nil {
 		return err
@@ -513,7 +513,7 @@ func (c *Cluster) SendSharedKey(msg Message) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	c.log.DebugF("Sending sharedkey reply to %s", msg.Origin)
+	c.log.DebugF(nil, "Sending sharedkey reply to %s", msg.Origin)
 	err = c.node.Send(ctx, msg.Origin, b)
 	if err != nil {
 		return err
@@ -535,6 +535,6 @@ func (c *Cluster) HandleSharedKey(msg Message) error {
 	if err != nil {
 		return err
 	}
-	c.log.Debug("Got shared key from " + msg.Origin)
+	c.log.Debug(nil, "Got shared key from "+msg.Origin)
 	return nil
 }

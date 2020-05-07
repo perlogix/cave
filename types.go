@@ -120,7 +120,7 @@ type PluginConfig struct {
 	ExeName string                 `yaml:"exe_name"`
 	Type    string                 `yaml:"type"`    // authenticator, api, etc.
 	SubType string                 `yaml:"subtype"` // LDAP, Basic, PAM, etc.
-	Env     []string               `yaml:"env"`
+	Env     map[string]string      `yaml:"env"`
 	Config  map[string]interface{} `yaml:"config"`
 }
 

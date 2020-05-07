@@ -26,7 +26,7 @@ type Log struct {
 // New logger
 func (l Log) New(config *Config) *Log {
 	log := &Log{
-		FormatString: "%s [ %-5s ] %v\n",
+		FormatString: "%s [ %-5s ] [ %-5s ] %v\n",
 		c:            make(chan string, config.Perf.BufferSize),
 		terminator:   make(chan bool),
 		config:       config,
@@ -82,83 +82,86 @@ func timestamp() string {
 	return time.Now().Format("2006-01-02 15:04:05.000 MST")
 }
 
-func (l *Log) print(lvl string, msg string) {
+func (l *Log) print(lvl string, src interface{}, msg string) {
+	if src == nil {
+		src = "MAIN"
+	}
 	go l.metrics["severity"].(*prometheus.CounterVec).WithLabelValues(lvl).Inc()
-	l.c <- fmt.Sprintf(l.FormatString, timestamp(), lvl, msg)
+	l.c <- fmt.Sprintf(l.FormatString, timestamp(), lvl, src.(string), msg)
 }
 
 // Debug method
-func (l *Log) Debug(v ...interface{}) {
+func (l *Log) Debug(src interface{}, v ...interface{}) {
 	if os.Getenv("DEBUG") != "" {
-		l.print("DEBUG", fmt.Sprint(v...))
+		l.print("DEBUG", src, fmt.Sprint(v...))
 	}
 }
 
 // DebugF func
-func (l *Log) DebugF(s string, v ...interface{}) {
+func (l *Log) DebugF(src interface{}, s string, v ...interface{}) {
 	if os.Getenv("DEBUG") != "" {
-		l.print("DEBUG", fmt.Sprintf(s, v...))
+		l.print("DEBUG", src, fmt.Sprintf(s, v...))
 	}
 }
 
 // Info method
-func (l *Log) Info(v ...interface{}) {
-	l.print("INFO", fmt.Sprint(v...))
+func (l *Log) Info(src interface{}, v ...interface{}) {
+	l.print("INFO", src, fmt.Sprint(v...))
 }
 
 // InfoF func
-func (l *Log) InfoF(s string, v ...interface{}) {
-	l.print("INFO", fmt.Sprintf(s, v...))
+func (l *Log) InfoF(src interface{}, s string, v ...interface{}) {
+	l.print("INFO", src, fmt.Sprintf(s, v...))
 }
 
 //Warn func
-func (l *Log) Warn(v ...interface{}) {
-	l.print("WARN", fmt.Sprint(v...))
+func (l *Log) Warn(src interface{}, v ...interface{}) {
+	l.print("WARN", src, fmt.Sprint(v...))
 }
 
 //WarnF func
-func (l *Log) WarnF(s string, v ...interface{}) {
-	l.print("WARN", fmt.Sprintf(s, v...))
+func (l *Log) WarnF(src interface{}, s string, v ...interface{}) {
+	l.print("WARN", src, fmt.Sprintf(s, v...))
 }
 
 //Error func
-func (l *Log) Error(v ...interface{}) {
-	l.print("ERROR", fmt.Sprint(v...))
+func (l *Log) Error(src interface{}, v ...interface{}) {
+	l.print("ERROR", src, fmt.Sprint(v...))
 }
 
 //ErrorF func
-func (l *Log) ErrorF(s string, v ...interface{}) {
-	l.print("ERROR", fmt.Sprintf(s, v...))
+func (l *Log) ErrorF(src interface{}, s string, v ...interface{}) {
+	l.print("ERROR", src, fmt.Sprintf(s, v...))
 }
 
 //Fatal func
-func (l *Log) Fatal(v ...interface{}) {
-	l.print("FATAL", fmt.Sprint(v...))
+func (l *Log) Fatal(src interface{}, v ...interface{}) {
+	l.print("FATAL", src, fmt.Sprint(v...))
 	os.Exit(1)
 }
 
 //FatalF func
-func (l *Log) FatalF(s string, v ...interface{}) {
-	l.print("FATAL", fmt.Sprintf(s, v...))
+func (l *Log) FatalF(src interface{}, s string, v ...interface{}) {
+	l.print("FATAL", src, fmt.Sprintf(s, v...))
 	os.Exit(1)
 }
 
 //Panic func
-func (l *Log) Panic(v ...interface{}) {
+func (l *Log) Panic(src interface{}, v ...interface{}) {
 	panic(fmt.Sprint(v...))
 }
 
 //PanicF func
-func (l *Log) PanicF(s string, v ...interface{}) {
+func (l *Log) PanicF(src interface{}, s string, v ...interface{}) {
 	panic(fmt.Sprintf(s, v...))
 }
 
 // Pretty log
-func (l *Log) Pretty(v ...interface{}) {
+func (l *Log) Pretty(src interface{}, v ...interface{}) {
 	for _, i := range v {
 		j, _ := json.MarshalIndent(i, "", "  ")
 		if string(j[:]) != "null" {
-			l.print("PRETTY", "\n"+string(j[:]))
+			l.print("PRETTY", src, "\n"+string(j[:]))
 		}
 	}
 }
@@ -172,7 +175,7 @@ func (l *Log) middleware(next echo.HandlerFunc) echo.HandlerFunc {
 			}
 		}
 		c.Response().After(func() {
-			l.print(strings.ToUpper(c.Scheme()), fmt.Sprintf(
+			l.print(strings.ToUpper(c.Scheme()), "API", fmt.Sprintf(
 				"%3v %-7s %s",
 				c.Response().Status,
 				c.Request().Method,

@@ -90,11 +90,11 @@ func (a *API) Start() {
 	scheme := "http://"
 	if a.config.SSL.Enable {
 		scheme = "https://"
-		a.log.InfoF("API listening on %s0.0.0.0:%v", scheme, a.config.API.Port)
-		a.log.Error(a.http.StartTLS(fmt.Sprintf("0.0.0.0:%v", a.config.API.Port), a.config.SSL.Certificate, a.config.SSL.Key))
+		a.log.InfoF(nil, "API listening on %s0.0.0.0:%v", scheme, a.config.API.Port)
+		a.log.Error(nil, a.http.StartTLS(fmt.Sprintf("0.0.0.0:%v", a.config.API.Port), a.config.SSL.Certificate, a.config.SSL.Key))
 	} else {
-		a.log.InfoF("API listening on %s0.0.0.0:%v", scheme, a.config.API.Port)
-		a.log.Error(a.http.Start(fmt.Sprintf("0.0.0.0:%v", a.config.API.Port)))
+		a.log.InfoF(nil, "API listening on %s0.0.0.0:%v", scheme, a.config.API.Port)
+		a.log.Error(nil, a.http.Start(fmt.Sprintf("0.0.0.0:%v", a.config.API.Port)))
 	}
 }
 
@@ -106,7 +106,7 @@ func (a *API) watch() {
 			defer cancel()
 			err := a.http.Shutdown(ctx)
 			if err != nil {
-				a.log.Error(err)
+				a.log.Error(nil, err)
 			}
 
 			return
@@ -185,7 +185,7 @@ func (a *API) kvGetHandler(c echo.Context) error {
 	if strings.HasSuffix(path, "/") || path == "" {
 		k, err := a.kv.GetKeys(path, "kv")
 		if err != nil {
-			a.log.Error(err)
+			a.log.Error(nil, err)
 			return c.JSON(500, jsonError{Message: err.Error()})
 		}
 		if len(k) == 0 {
@@ -197,7 +197,7 @@ func (a *API) kvGetHandler(c echo.Context) error {
 	}
 	b, err := a.kv.Get(path, "kv")
 	if err != nil {
-		a.log.Error(err)
+		a.log.Error(nil, err)
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}
 	if len(b) == 0 {
@@ -218,7 +218,7 @@ func (a *API) kvPutHandler(c echo.Context) error {
 	path := trimPath(c.Request().URL.Path, KVPREFIX)
 	buf, err := ioutil.ReadAll(c.Request().Body)
 	if err != nil {
-		a.log.Error(err)
+		a.log.Error(nil, err)
 		return c.JSON(400, jsonError{Message: err.Error()})
 	}
 	secret := false
@@ -232,7 +232,7 @@ func (a *API) kvPutHandler(c echo.Context) error {
 	}
 	err = a.kv.Put(path, buf, "kv", secret)
 	if err != nil {
-		a.log.Error(err)
+		a.log.Error(nil, err)
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}
 	return c.JSON(200, jsonError{Message: "ok"})

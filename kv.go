@@ -185,7 +185,7 @@ func (kv *KV) start() {
 		case msg := <-kv.updates:
 			err := kv.handleUpdate(msg)
 			if err != nil {
-				kv.log.Error(err)
+				kv.log.Error(nil, err)
 			}
 		default:
 			time.Sleep(10 * time.Millisecond)
@@ -233,7 +233,7 @@ func (kv *KV) handleUpdate(msg Message) error {
 			return err
 		}
 	default:
-		kv.log.Error("UpdateType " + kvu.UpdateType + " not a valid type")
+		kv.log.Error(nil, "UpdateType "+kvu.UpdateType+" not a valid type")
 		return nil
 	}
 	return nil

@@ -45,7 +45,7 @@ func main() {
 	log := Log{}.New(CONFIG)
 	TERMINATOR["log"] = log.terminator
 	go log.Start()
-	log.Debug("START: Logger")
+	log.Debug("START", "Logger")
 	app := &Cave{
 		Config: CONFIG,
 		Logger: log,
@@ -71,10 +71,10 @@ func main() {
 	}
 
 	go app.Cluster.Start(clusterReady)
-	log.Debug("START: Cluster")
-	log.Debug("Waiting on sync operation.")
+	log.Debug("START", "Cluster")
+	log.Debug(nil, "Waiting on sync operation.")
 	<-clusterReady
-	log.Debug("Waiting done.")
+	log.Debug(nil, "Waiting done.")
 	if app.Cluster.genRSA {
 		err = app.Crypto.GenerateSharedKey()
 		if err != nil {
@@ -120,13 +120,13 @@ func main() {
 	TERMINATOR["api"] = api.terminate
 	// START SHIT
 	go app.KV.start()
-	log.Debug("START: KV")
+	log.Debug("START", "KV")
 	go app.API.Start()
-	log.Debug("START: API")
+	log.Debug("START", "API")
 	<-kill
-	log.Warn("Got kill signal from OS, shutting down...")
+	log.Warn(nil, "Got kill signal from OS, shutting down...")
 	for _, t := range []string{"api", "auth", "kv", "cluster", "plugins", "tokens", "log"} {
-		log.Warn("Shutting down " + t)
+		log.Warn(nil, "Shutting down "+t)
 		TERMINATOR[t] <- true
 	}
 
