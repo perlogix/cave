@@ -115,13 +115,14 @@ type node struct {
 
 // PluginConfig type
 type PluginConfig struct {
-	Name    string                 `yaml:"name"`
-	Version string                 `yaml:"version"`
-	ExeName string                 `yaml:"exe_name"`
-	Type    string                 `yaml:"type"`    // authenticator, api, etc.
-	SubType string                 `yaml:"subtype"` // LDAP, Basic, PAM, etc.
-	Env     map[string]string      `yaml:"env"`
-	Config  map[string]interface{} `yaml:"config"`
+	Name         string                 `yaml:"name"`
+	Version      string                 `yaml:"version"`
+	ExeName      string                 `yaml:"exe_name"`
+	Type         string                 `yaml:"type"`    // authenticator, api, etc.
+	SubType      string                 `yaml:"subtype"` // LDAP, Basic, PAM, etc.
+	Env          map[string]string      `yaml:"env"`
+	Config       map[string]interface{} `yaml:"config"`
+	StartupDelay int                    `yaml:"startup_delay"`
 }
 
 // APIRequest type

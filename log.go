@@ -26,7 +26,7 @@ type Log struct {
 // New logger
 func (l Log) New(config *Config) *Log {
 	log := &Log{
-		FormatString: "%s [ %-5s ] [ %-5s ] %v\n",
+		FormatString: "%s [ %-5s ] [ %-6s ] %v\n",
 		c:            make(chan string, config.Perf.BufferSize),
 		terminator:   make(chan bool),
 		config:       config,

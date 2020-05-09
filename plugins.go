@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -50,13 +48,13 @@ func NewPlugins(app *Cave) (*Plugins, error) {
 			return nil, err
 		}
 		err = p.mgr.NewProcess(subrpc.ProcessOptions{
-			Name:    i.Name,
-			Type:    i.Type,
-			Config:  i.Config,
-			ExePath: "./plugins.d/" + i.ExeName,
-			Env:     i.Env,
-			Token:   t.Token,
-			Port:    findAPort(),
+			Name:         i.Name,
+			Type:         i.Type,
+			Config:       i.Config,
+			ExePath:      "./plugins.d/" + i.ExeName,
+			Env:          i.Env,
+			Token:        t.Token,
+			StartupDelay: time.Duration(i.StartupDelay) * time.Second,
 		})
 		if err != nil {
 			return nil, err
@@ -67,7 +65,7 @@ func NewPlugins(app *Cave) (*Plugins, error) {
 
 // Start function
 func (p *Plugins) Start() {
-	p.log.Debug("Starting plugins")
+	p.log.Debug("PLUGIN", "Starting plugins")
 	errs := p.mgr.StartAllProcess()
 	if len(errs) > 0 {
 		for _, e := range errs {
@@ -76,7 +74,7 @@ func (p *Plugins) Start() {
 	}
 	go p.Logger()
 	go p.doMetrics()
-	p.log.Debug("Done starting plugins")
+	p.log.Debug("PLUGIN", "Done starting plugins")
 	_ = <-p.terminate
 	errs = p.mgr.StopAll()
 	if len(errs) > 0 {
@@ -213,19 +211,4 @@ func pluginMetrics() map[string]interface{} {
 	}
 }
 
-func findAPort() int {
-	start := 8000
-	for {
-		conn, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%v", start))
-		defer conn.Close()
-		if err != nil {
-			start++
-		} else {
-			return start
-		}
-	}
-}
-
-//// GO BACK TO SOCKETS
-//// CREATE SOCKET AHEAD OF TIME AND SET PERMISSIONS
-//// THIS SHIT IS DUMB AS FUCK
+// LOGGING IS NOT WORKING

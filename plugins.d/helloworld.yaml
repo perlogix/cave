@@ -1,6 +1,7 @@
 name: helloworld
 exe_name: helloworld
 type: api
+startup_delay: 5
 env:
    hello: fartbrains
 config:
