@@ -1,8 +1,8 @@
 FROM alpine:latest
 
-ENV BUNKER_MODE="dev"
+ENV CAVE_MODE="dev"
 
-COPY bunker bunker
+COPY cave cave
 COPY config.yaml config.yaml
 COPY entrypoint.sh entrypoint.sh
 
