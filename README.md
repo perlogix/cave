@@ -1,4 +1,4 @@
-# BUNKER
+# CAVE
 Horizontally scale-able container-native key/value store.
 
 ## TODO

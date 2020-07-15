@@ -27,7 +27,6 @@ type Cave struct {
 	KV         *KV
 	KVInit     bool
 	API        *API
-	Auth       *AuthService
 	Crypto     *Crypto
 	Plugins    *Plugins
 	TokenStore *TokenStore

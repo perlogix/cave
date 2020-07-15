@@ -106,12 +106,6 @@ func main() {
 	app.KVInit = true
 	app.KV = kv
 	TERMINATOR["kv"] = kv.terminate
-	auth, err := NewAuth(app)
-	if err != nil {
-		panic(err)
-	}
-	app.Auth = auth
-	TERMINATOR["auth"] = auth.terminate
 	api, err := NewAPI(app)
 	if err != nil {
 		panic(err)
@@ -125,7 +119,7 @@ func main() {
 	log.Debug("START", "API")
 	<-kill
 	log.Warn(nil, "Got kill signal from OS, shutting down...")
-	for _, t := range []string{"api", "auth", "kv", "cluster", "plugins", "tokens", "log"} {
+	for _, t := range []string{"api", "kv", "cluster", "plugins", "tokens", "log"} {
 		log.Warn(nil, "Shutting down "+t)
 		TERMINATOR[t] <- true
 	}

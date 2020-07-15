@@ -44,7 +44,6 @@ type API struct {
 	terminate chan bool
 	kv        *KV
 	http      *echo.Echo
-	auth      *AuthService
 }
 
 //NewAPI function
@@ -54,7 +53,6 @@ func NewAPI(app *Cave) (*API, error) {
 		config: app.Config,
 		log:    app.Logger,
 		kv:     app.KV,
-		auth:   app.Auth,
 	}
 	a.terminate = make(chan bool)
 	a.http = echo.New()
@@ -301,6 +299,5 @@ func (a *API) routeSystemInfo(c echo.Context) error {
 	}
 	i["os"] = info
 	i["env"] = os.Environ()
-
 	return c.JSON(200, i)
 }
