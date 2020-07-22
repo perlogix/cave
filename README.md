@@ -6,7 +6,7 @@
 Cave is a reaction to the technologies on the market in both COTS and OSS worlds. We identified a need to have a fast, reliable, cloud-native key-value database that doesn't require a lot of configuration or workarounds to make a master/worker model...work. 
 
 # What is it not?
-Cave is not ACID compliant and makes no write garuantees. 
+Cave is not ACID compliant and makes no write guarantees. 
 
 # How does it work?
 Cave is based on a DHT network. Cluster peers are discovered by sharing lists of peers with other peers, this means that a node only needs to "see" a single node of a cluster in order to fully join and connect with the rest of the cluster. 
