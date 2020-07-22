@@ -46,13 +46,12 @@ Cave can be used via the REST API. Full API spec will be provided below. In gene
 ## KV
 
 ### /api/v1/kv/[path/.../path]/keyname
+```
 Methods: GET, POST, DELETE
-
 GET - Getting a path and key name will read that path and key name from the db
-
 POST - POSTing data to a path and key name will store data at that path and key name
-
 DELETE - DELETE will delete a key and value at a given path name
+```
 
 ## PERF
 
