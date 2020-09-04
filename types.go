@@ -143,3 +143,20 @@ type Token struct {
 	IssuedBy   string
 	Type       string
 }
+
+// MultiQuery type
+type MultiQuery struct {
+	ID          string        `json:"id"`
+	Query       []QueryObject `json:"query"`
+	QueryErrors bool          `json:"query_errors"`
+	Error       error         `json:"error"`
+}
+
+// QueryObject type
+type QueryObject struct {
+	Key    string `json:"key"`
+	Verb   string `json:"verb"`
+	Value  string `json:"value"`
+	Secret bool   `json:"secret"`
+	Error  string `json:"error"`
+}

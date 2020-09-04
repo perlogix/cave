@@ -43,10 +43,11 @@ type KVUpdate struct {
 
 //KVObject struct
 type KVObject struct {
-	LastUpdated time.Time       `json:"last_updated"`
-	Secret      bool            `json:"secret"`
-	Data        json.RawMessage `json:"data"`
-	Locks       []Lock          `json:"locks"`
+	LastUpdated time.Time `json:"last_updated"`
+	Secret      bool      `json:"secret"`
+	Data        []byte    `json:"data"`
+	Locks       []Lock    `json:"locks"`
+	Plaintext   bool      `json:"plaintext;omitempty"`
 }
 
 // Lock object
@@ -324,11 +325,21 @@ func (kv *KV) getBuckets(tx *bbolt.Tx, buckets []string, prefix string, create b
 
 //Put function
 func (kv *KV) Put(key string, value []byte, prefix string, secret bool, e ...bool) error {
+	isPlain := func(b []byte) bool {
+		var js json.RawMessage
+		return json.Unmarshal(value, &js) != nil
+	}(value)
 	return kv.PutObject(key, KVObject{
 		LastUpdated: time.Now(),
 		Secret:      secret,
-		Data:        json.RawMessage(value),
-		Locks:       []Lock{},
+		Data: func() []byte {
+			if isPlain {
+				return value
+			}
+			return json.RawMessage(value)
+		}(),
+		Locks:     []Lock{},
+		Plaintext: isPlain,
 	}, prefix, secret, e...)
 }
 

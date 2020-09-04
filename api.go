@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/shirou/gopsutil/host"
@@ -70,6 +72,7 @@ func NewAPI(app *Cave) (*API, error) {
 	a.http.Any("/api/v1/kv/*", a.kvHandler)
 	a.http.POST(APIPREFIX+"login", a.routeLogin)
 	a.http.GET(APIPREFIX+"cluster/nodes", a.routeClusterNodes)
+	a.http.POST("/api/v1/query", a.multiQueryHandler)
 	// PERF GROUP
 	perf := a.http.Group(APIPREFIX + "perf")
 	perf.GET("/logs", a.routeLogs)
@@ -129,7 +132,7 @@ func (a *API) kvHandler(c echo.Context) error {
 	case "POST":
 		return a.kvPutHandler(c)
 	case "DELETE":
-		return a.kvPutHandler(c)
+		return a.kvDeleteHandler(c)
 	default:
 		return c.JSON(405, jsonError{Message: "Method " + c.Request().Method + " is not allowed"})
 	}
@@ -209,7 +212,6 @@ func (a *API) kvGetHandler(c echo.Context) error {
 		return c.Blob(200, "application/json", data)
 	}
 	return c.Blob(200, "application/json", b)
-
 }
 
 func (a *API) kvPutHandler(c echo.Context) error {
@@ -252,6 +254,114 @@ func (a *API) kvDeleteHandler(c echo.Context) error {
 		return c.JSON(500, jsonError{Message: err.Error()})
 	}
 	return c.JSON(200, jsonError{Message: "ok"})
+}
+
+func (a *API) multiQueryHandler(c echo.Context) error {
+	buf, err := ioutil.ReadAll(c.Request().Body)
+	if err != nil {
+		return c.JSON(400, jsonError{Message: err.Error()})
+	}
+	mq := MultiQuery{}
+	err = json.Unmarshal(buf, &mq)
+	if err != nil {
+		return c.JSON(400, jsonError{Message: err.Error()})
+	}
+	result := make(chan QueryObject, len(mq.Query))
+	for _, q := range mq.Query {
+		switch strings.ToUpper(q.Verb) {
+		case "GET":
+			go a.doGET(q, result)
+		case "PUT":
+			go a.doPOST(q, result)
+		case "POST":
+			go a.doPOST(q, result)
+		case "DELETE":
+			go a.doDELETE(q, result)
+		default:
+			q.Error = fmt.Sprintf("Verb %s is not a valid operation", q.Verb)
+			result <- q
+		}
+	}
+	for {
+		if len(result) >= len(mq.Query) {
+			close(result)
+			break
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+	rq := MultiQuery{
+		ID:          uuid.New().String(),
+		Query:       []QueryObject{},
+		QueryErrors: false,
+	}
+	for r := range result {
+		if r.Error != "" {
+			rq.QueryErrors = true
+		}
+		rq.Query = append(rq.Query, r)
+	}
+	blob, err := json.Marshal(rq)
+	rq.Error = err
+	if rq.QueryErrors || err != nil {
+		return c.Blob(400, "application/json", blob)
+	}
+	return c.Blob(200, "application/json", blob)
+}
+
+func (a *API) doGET(q QueryObject, result chan QueryObject) {
+	b, err := a.kv.Get(q.Key, "kv")
+	if err != nil {
+		q.Error = err.Error()
+		result <- q
+		return
+	}
+	if len(b) == 0 {
+		q.Error = fmt.Sprintf("Key %s does not exist", q.Key)
+		result <- q
+		return
+	}
+	if q.Secret {
+		data, err := decryptJSON(a.kv.sharedkey, b)
+		if err != nil {
+			q.Value = string(b[:])
+		}
+		q.Value = string(data[:])
+	}
+	q.Value = string(b)
+	result <- q
+	return
+}
+
+func (a *API) doPOST(q QueryObject, result chan QueryObject) {
+	buf := q.Value
+	if q.Secret {
+		data, err := encrytJSON(a.kv.sharedkey, q.Value)
+		if err != nil {
+			q.Error = err.Error()
+			result <- q
+			return
+		}
+		buf = string(data[:])
+	}
+	err := a.kv.Put(q.Key, []byte(buf), "kv", q.Secret)
+	if err != nil {
+		q.Error = err.Error()
+		result <- q
+		return
+	}
+	result <- q
+	return
+}
+
+func (a *API) doDELETE(q QueryObject, result chan QueryObject) {
+	err := a.kv.DeleteKey(q.Key, "kv")
+	if err != nil {
+		q.Error = err.Error()
+		result <- q
+		return
+	}
+	result <- q
+	return
 }
 
 func (a *API) routeClusterNodes(c echo.Context) error {

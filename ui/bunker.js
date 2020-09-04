@@ -66,7 +66,6 @@ angular.module('bunker', [])
             $scope.active = key
             uri = $scope.url.join("/") + key.key
             if (key.dir) {
-
                 $scope.getkeys(uri)
                 return
             } else {
@@ -87,7 +86,8 @@ angular.module('bunker', [])
                             console.log(res)
                         })
                     }
-                    $scope.activeItem = JSON.stringify(res.data, undefined, 4)
+                    $scope.activeItem = res.data
+                    //$scope.activeItem = JSON.stringify(res.data, undefined, 4)
                 }, function (res) {
                     console.log(res)
                 })
